@@ -5,32 +5,83 @@
     "step": {
       "user": {
         "title": "Maak een daglichtsensor voor een ruimte",
-        "description": "Kies een buitenverlichtingssensor die de actuele weers- en bewolkingsomstandigheden al weerspiegelt. Luxsensoren binnenshuis zijn optionele ondersteunende invoer; ze worden genegeerd zolang een geselecteerde kunstlichtbron aan staat.",
+        "description": "Configureer de ruimte en de bronentiteiten waarmee het natuurlijke daglicht wordt geschat. De raamgegevens worden in de volgende stap ingevoerd.",
         "data": {
           "name": "Naam van de ruimte",
           "outside_illuminance": "Buitenverlichtingssensor",
-          "floor_area": "Vloeroppervlak (m²)",
-          "indoor_illuminance": "Optionele luxsensoren binnenshuis",
-          "artificial_lights": "Lampen die luxmetingen binnenshuis ongeldig maken"
+          "sun_entity": "Zonentiteit",
+          "floor_area": "Vloeroppervlak",
+          "window_count": "Aantal ramen / glasopeningen",
+          "indoor_illuminance": "Optionele verlichtingssensoren binnen",
+          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt"
+        },
+        "data_description": {
+          "name": "Een herkenbare naam voor deze ruimte, bijvoorbeeld Woonkamer of Keuken.",
+          "outside_illuminance": "Een sensor met apparaatklasse Verlichtingssterkte die het actuele buitenlicht in lux weergeeft. Dit kan een fysieke buitenluxsensor zijn of een geschatte bron zoals de Illuminance-integratie.",
+          "sun_entity": "Een Home Assistant-zonentiteit met de huidige zonne-azimut en -hoogte. De standaard Sun-integratie levert normaal sun.sun.",
+          "floor_area": "Het geschatte interne vloeroppervlak van de ruimte in vierkante meter. Lengte × breedte is meestal voldoende.",
+          "window_count": "Het aantal afzonderlijke externe ramen, glazen deuren of andere glasopeningen dat daglicht aan deze ruimte levert.",
+          "indoor_illuminance": "Optionele verlichtingssensoren in de ruimte. Hun metingen corrigeren het model slechts beperkt, zodat lokale lichte of donkere plekken niet kunnen domineren.",
+          "artificial_lights": "Selecteer lampen die de gekozen binnensensoren merkbaar beïnvloeden. De correctie met binnensensoren wordt genegeerd zolang een geselecteerde lamp aan staat."
+        }
+      },
+      "reconfigure": {
+        "title": "Daglichtmodel opnieuw configureren",
+        "description": "Werk de daglichtbron, zonentiteit, ruimtegrootte of ramen bij. Binnensensoren en kunstlichtuitsluitingen kunnen via Configureren / Opties worden gewijzigd.",
+        "data": {
+          "outside_illuminance": "Buitenverlichtingssensor",
+          "sun_entity": "Zonentiteit",
+          "floor_area": "Vloeroppervlak",
+          "window_count": "Aantal ramen / glasopeningen"
+        },
+        "data_description": {
+          "outside_illuminance": "Een sensor met apparaatklasse Verlichtingssterkte die het actuele buitenlicht in lux weergeeft.",
+          "sun_entity": "Een Home Assistant-zonentiteit met zonne-azimut en -hoogte.",
+          "floor_area": "Geschat intern vloeroppervlak in vierkante meter.",
+          "window_count": "Wijzig dit aantal om in de volgende stappen ramen toe te voegen of te verwijderen."
         }
       },
       "window": {
-        "title": "Raam {window_number}",
-        "description": "Voer de afmetingen van het glasoppervlak en de naar buiten gerichte azimut in. Noord = 0°, Oost = 90°, Zuid = 180°, West = 270°. Een gekoppelde cover wordt uitgesloten wanneer deze volledig gesloten is; een binaire sensor of input_boolean wordt uitgesloten wanneer deze aan staat.",
+        "title": "Raam {window_number} van {window_total}",
+        "description": "Voer één externe glasopening in. Meet ongeveer de glasopening en niet de muur. Azimut is de kompasrichting waarin het raam naar buiten kijkt: Noord 0°, Oost 90°, Zuid 180°, West 270°.",
         "data": {
-          "width": "Breedte (m)",
-          "height": "Hoogte (m)",
-          "azimuth": "Raamazimut (°)",
-          "cover_entity": "Optionele entiteit voor raamafdekking",
-          "add_another": "Nog een raam toevoegen"
+          "width": "Glasbreedte",
+          "height": "Glashoogte",
+          "azimuth": "Naar buiten gerichte azimut",
+          "cover_entity": "Optionele jaloezie-/gordijnentiteit"
+        },
+        "data_description": {
+          "width": "Geschatte breedte van de glasopening in meter. Meet bij Franse of schuifdeuren de volledige glazen deuropening.",
+          "height": "Geschatte hoogte van de glasopening in meter.",
+          "azimuth": "Kompasrichting in graden waarin dit raam naar buiten kijkt. Noord = 0°, Oost = 90°, Zuid = 180°, West = 270°.",
+          "cover_entity": "Optionele cover, binaire sensor of input boolean die aangeeft of de opening bedekt is. Een volledig gesloten cover of ingeschakelde binaire/input boolean sluit dit raam uit."
         }
       }
     },
     "error": {
-      "required": "Dit veld is verplicht."
+      "required": "Dit veld is verplicht.",
+      "positive_number": "Voer een getal groter dan nul in.",
+      "azimuth_range": "Voer een azimut in van 0° tot, maar niet inclusief, 360°."
     },
     "abort": {
-      "already_configured": "Een ruimte met deze naam is al geconfigureerd."
+      "already_configured": "Een ruimte met deze naam is al geconfigureerd.",
+      "reconfigure_successful": "Room Daylight is succesvol opnieuw geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Room Daylight-opties",
+        "description": "Beheer optionele correctie met binnensensoren en kunstverlichting die deze correctie tijdelijk uitschakelt.",
+        "data": {
+          "indoor_illuminance": "Verlichtingssensoren binnen",
+          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt"
+        },
+        "data_description": {
+          "indoor_illuminance": "Selecteer één of meer verlichtingssensoren in deze ruimte. De metingen versterken het model maar kunnen het niet volledig overschrijven.",
+          "artificial_lights": "Selecteer lampen die deze sensoren merkbaar beïnvloeden. Wanneer een geselecteerde lamp aan staat, worden binnensensoren genegeerd zodat kunstlicht niet als daglicht wordt gezien."
+        }
+      }
     }
   }
 }

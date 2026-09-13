@@ -4,33 +4,84 @@
     "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "Crear un sensor de luz natural para una habitación",
-        "description": "Elige un sensor de iluminancia exterior que ya refleje las condiciones meteorológicas y de nubosidad actuales. Los sensores de lux interiores son entradas opcionales de apoyo; se ignoran mientras esté encendida cualquier luz artificial seleccionada.",
+        "title": "Crear un sensor de luz diurna para una habitación",
+        "description": "Configure the room and the source entities used to estimate its natural daylight. Window details are entered on the next step.",
         "data": {
           "name": "Nombre de la habitación",
           "outside_illuminance": "Sensor de iluminancia exterior",
-          "floor_area": "Superficie del suelo (m²)",
-          "indoor_illuminance": "Sensores de lux interiores opcionales",
-          "artificial_lights": "Luces que invalidan las lecturas de lux interiores"
+          "sun_entity": "Entidad Sol",
+          "floor_area": "Superficie",
+          "window_count": "Número de ventanas / huecos acristalados",
+          "indoor_illuminance": "Sensores de iluminancia interior opcionales",
+          "artificial_lights": "Luces artificiales que afectan a los sensores"
+        },
+        "data_description": {
+          "name": "A friendly name for this room, for example Living Room or Kitchen.",
+          "outside_illuminance": "A sensor with the Illuminance device class that represents the current outdoor light level in lux. This can be a physical outdoor lux sensor or an estimated source such as the Illuminance integration.",
+          "sun_entity": "A Home Assistant Sun entity that exposes the current solar azimuth and elevation. The standard Sun integration normally provides sun.sun.",
+          "floor_area": "The approximate internal floor area of the room in square metres. Length × width is usually sufficient; exact architectural precision is not required.",
+          "window_count": "How many separate external windows, glazed doors, or other glazed openings contribute daylight to this room.",
+          "indoor_illuminance": "Optional illuminance sensors inside the room. Their readings only provide a bounded correction to the calculated estimate, so local bright or dark spots cannot dominate it.",
+          "artificial_lights": "Select lights that materially affect the chosen indoor illuminance sensors. Indoor sensor correction is ignored whenever any selected light is on."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure room daylight",
+        "description": "Update the daylight source, Sun entity, room size, or windows. Indoor illuminance sensors and artificial-light exclusions can be changed from Configure / Options.",
+        "data": {
+          "outside_illuminance": "Sensor de iluminancia exterior",
+          "sun_entity": "Entidad Sol",
+          "floor_area": "Superficie",
+          "window_count": "Número de ventanas / huecos acristalados"
+        },
+        "data_description": {
+          "outside_illuminance": "A sensor with the Illuminance device class that represents the current outdoor light level in lux.",
+          "sun_entity": "A Home Assistant Sun entity exposing solar azimuth and elevation.",
+          "floor_area": "Approximate internal floor area in square metres.",
+          "window_count": "Changing this value lets you add or remove configured windows during the following steps."
         }
       },
       "window": {
-        "title": "Ventana {window_number}",
-        "description": "Introduce las dimensiones del hueco acristalado y el azimut orientado hacia el exterior. Norte = 0°, Este = 90°, Sur = 180°, Oeste = 270°. Una cubierta vinculada se excluye cuando está completamente cerrada; un sensor binario o input_boolean se excluye cuando está activado.",
+        "title": "Ventana {window_number} de {window_total}",
+        "description": "Enter one external glazed opening. Measure the approximate glazed opening rather than the wall. Azimuth is the compass direction the window faces outwards: North 0°, East 90°, South 180°, West 270°. A phone compass can be used if needed.",
         "data": {
-          "width": "Anchura (m)",
-          "height": "Altura (m)",
-          "azimuth": "Azimut de la ventana (°)",
-          "cover_entity": "Entidad de cobertura opcional",
-          "add_another": "Añadir otra ventana"
+          "width": "Anchura acristalada",
+          "height": "Altura acristalada",
+          "azimuth": "Azimut hacia el exterior",
+          "cover_entity": "Entidad opcional de persiana / cortina"
+        },
+        "data_description": {
+          "width": "Approximate width of the glazed opening in metres. For French or patio doors, measure the complete glazed doorway.",
+          "height": "Approximate height of the glazed opening in metres.",
+          "azimuth": "Compass bearing in degrees for the direction this window faces outwards. North = 0°, East = 90°, South = 180°, West = 270°.",
+          "cover_entity": "Optional cover, binary sensor, or input boolean representing whether this opening is covered. A fully closed cover, or an on binary/input boolean, excludes this window from the calculation."
         }
       }
     },
     "error": {
-      "required": "Este campo es obligatorio."
+      "required": "This field is required.",
+      "positive_number": "Enter a number greater than zero.",
+      "azimuth_range": "Enter an azimuth from 0° up to, but not including, 360°."
     },
     "abort": {
-      "already_configured": "Ya hay una habitación configurada con este nombre."
+      "already_configured": "A room with this name is already configured.",
+      "reconfigure_successful": "Room Daylight was reconfigured successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Room Daylight options",
+        "description": "Manage optional indoor sensor correction and the artificial lights that temporarily disable it.",
+        "data": {
+          "indoor_illuminance": "Sensores de iluminancia interior opcionales",
+          "artificial_lights": "Luces artificiales que afectan a los sensores"
+        },
+        "data_description": {
+          "indoor_illuminance": "Select one or more illuminance sensors in this room. These readings reinforce the model but are deliberately prevented from overriding it completely.",
+          "artificial_lights": "Select lights that materially affect those sensors. When any selected light is on, indoor readings are ignored so artificial light is not mistaken for daylight."
+        }
+      }
     }
   }
 }
