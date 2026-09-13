@@ -1,0 +1,36 @@
+{
+  "title": "Room Daylight",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Crear un sensor de luz natural para una habitación",
+        "description": "Elige un sensor de iluminancia exterior que ya refleje las condiciones meteorológicas y de nubosidad actuales. Los sensores de lux interiores son entradas opcionales de apoyo; se ignoran mientras esté encendida cualquier luz artificial seleccionada.",
+        "data": {
+          "name": "Nombre de la habitación",
+          "outside_illuminance": "Sensor de iluminancia exterior",
+          "floor_area": "Superficie del suelo (m²)",
+          "indoor_illuminance": "Sensores de lux interiores opcionales",
+          "artificial_lights": "Luces que invalidan las lecturas de lux interiores"
+        }
+      },
+      "window": {
+        "title": "Ventana {window_number}",
+        "description": "Introduce las dimensiones del hueco acristalado y el azimut orientado hacia el exterior. Norte = 0°, Este = 90°, Sur = 180°, Oeste = 270°. Una cubierta vinculada se excluye cuando está completamente cerrada; un sensor binario o input_boolean se excluye cuando está activado.",
+        "data": {
+          "width": "Anchura (m)",
+          "height": "Altura (m)",
+          "azimuth": "Azimut de la ventana (°)",
+          "cover_entity": "Entidad de cobertura opcional",
+          "add_another": "Añadir otra ventana"
+        }
+      }
+    },
+    "error": {
+      "required": "Este campo es obligatorio."
+    },
+    "abort": {
+      "already_configured": "Ya hay una habitación configurada con este nombre."
+    }
+  }
+}

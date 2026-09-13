@@ -1,0 +1,36 @@
+{
+  "title": "Room Daylight",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Créer un capteur de lumière naturelle pour une pièce",
+        "description": "Choisissez un capteur d'éclairement extérieur qui tient déjà compte des conditions météo et de la couverture nuageuse actuelles. Les capteurs de lux intérieurs sont des entrées facultatives ; ils sont ignorés tant qu'une source de lumière artificielle sélectionnée est allumée.",
+        "data": {
+          "name": "Nom de la pièce",
+          "outside_illuminance": "Capteur d'éclairement extérieur",
+          "floor_area": "Surface au sol (m²)",
+          "indoor_illuminance": "Capteurs de lux intérieurs facultatifs",
+          "artificial_lights": "Lumières qui invalident les mesures de lux intérieures"
+        }
+      },
+      "window": {
+        "title": "Fenêtre {window_number}",
+        "description": "Saisissez les dimensions de la surface vitrée et l'azimut orienté vers l'extérieur. Nord = 0°, Est = 90°, Sud = 180°, Ouest = 270°. Un store lié est exclu lorsqu'il est complètement fermé ; un capteur binaire ou input_boolean est exclu lorsqu'il est activé.",
+        "data": {
+          "width": "Largeur (m)",
+          "height": "Hauteur (m)",
+          "azimuth": "Azimut de la fenêtre (°)",
+          "cover_entity": "Entité de couverture facultative",
+          "add_another": "Ajouter une autre fenêtre"
+        }
+      }
+    },
+    "error": {
+      "required": "Ce champ est obligatoire."
+    },
+    "abort": {
+      "already_configured": "Une pièce portant ce nom est déjà configurée."
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "title": "Room Daylight",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Tageslichtsensor für einen Raum erstellen",
+        "description": "Wähle einen Außenbeleuchtungssensor, der die aktuellen Wetter- und Bewölkungsverhältnisse bereits berücksichtigt. Innen-Luxsensoren sind optionale unterstützende Eingaben; sie werden ignoriert, solange eine ausgewählte künstliche Lichtquelle eingeschaltet ist.",
+        "data": {
+          "name": "Raumname",
+          "outside_illuminance": "Außenbeleuchtungssensor",
+          "floor_area": "Grundfläche (m²)",
+          "indoor_illuminance": "Optionale Innen-Luxsensoren",
+          "artificial_lights": "Leuchten, die Innen-Luxmessungen ungültig machen"
+        }
+      },
+      "window": {
+        "title": "Fenster {window_number}",
+        "description": "Gib die Maße der verglasten Öffnung und den nach außen gerichteten Azimut ein. Nord = 0°, Ost = 90°, Süd = 180°, West = 270°. Eine verknüpfte Abdeckung wird ausgeschlossen, wenn sie vollständig geschlossen ist; ein Binärsensor oder input_boolean wird ausgeschlossen, wenn er eingeschaltet ist.",
+        "data": {
+          "width": "Breite (m)",
+          "height": "Höhe (m)",
+          "azimuth": "Fensterazimut (°)",
+          "cover_entity": "Optionale Abdeckungsentität",
+          "add_another": "Weiteres Fenster hinzufügen"
+        }
+      }
+    },
+    "error": {
+      "required": "Dieses Feld ist erforderlich."
+    },
+    "abort": {
+      "already_configured": "Ein Raum mit diesem Namen ist bereits konfiguriert."
+    }
+  }
+}

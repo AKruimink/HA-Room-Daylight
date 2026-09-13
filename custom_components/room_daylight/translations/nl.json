@@ -1,0 +1,36 @@
+{
+  "title": "Room Daylight",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Maak een daglichtsensor voor een ruimte",
+        "description": "Kies een buitenverlichtingssensor die de actuele weers- en bewolkingsomstandigheden al weerspiegelt. Luxsensoren binnenshuis zijn optionele ondersteunende invoer; ze worden genegeerd zolang een geselecteerde kunstlichtbron aan staat.",
+        "data": {
+          "name": "Naam van de ruimte",
+          "outside_illuminance": "Buitenverlichtingssensor",
+          "floor_area": "Vloeroppervlak (m²)",
+          "indoor_illuminance": "Optionele luxsensoren binnenshuis",
+          "artificial_lights": "Lampen die luxmetingen binnenshuis ongeldig maken"
+        }
+      },
+      "window": {
+        "title": "Raam {window_number}",
+        "description": "Voer de afmetingen van het glasoppervlak en de naar buiten gerichte azimut in. Noord = 0°, Oost = 90°, Zuid = 180°, West = 270°. Een gekoppelde cover wordt uitgesloten wanneer deze volledig gesloten is; een binaire sensor of input_boolean wordt uitgesloten wanneer deze aan staat.",
+        "data": {
+          "width": "Breedte (m)",
+          "height": "Hoogte (m)",
+          "azimuth": "Raamazimut (°)",
+          "cover_entity": "Optionele entiteit voor raamafdekking",
+          "add_another": "Nog een raam toevoegen"
+        }
+      }
+    },
+    "error": {
+      "required": "Dit veld is verplicht."
+    },
+    "abort": {
+      "already_configured": "Een ruimte met deze naam is al geconfigureerd."
+    }
+  }
+}
