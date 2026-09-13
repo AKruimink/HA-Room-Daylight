@@ -11,8 +11,11 @@ Each configured room creates its own illuminance sensor for use in automations, 
 ## Features
 
 - Configure any number of rooms through the Home Assistant UI.
+- Each room is a normal integration config entry with its own illuminance entity.
+- Reconfigure room geometry and source entities without deleting the room.
+- Change optional indoor sensors and artificial-light exclusions from Configure / Options.
 - Use any existing outdoor illuminance sensor as the daylight source.
-- Account for current sun azimuth and elevation.
+- Account for current sun azimuth and elevation from a user-selected Sun entity.
 - Configure multiple windows with dimensions and orientation.
 - Exclude windows when linked blinds or curtains are closed.
 - Optionally use existing indoor lux sensors as bounded supporting inputs.
@@ -111,11 +114,15 @@ Each Room Daylight config entry represents one room.
 The setup flow asks for:
 
 1. room name;
-2. outdoor illuminance entity;
-3. room floor area;
-4. optional indoor lux sensors;
-5. optional artificial lights that invalidate indoor lux readings; and
-6. one or more windows, including width, height, outward-facing azimuth and optional covering entity.
+2. an outdoor illuminance entity (filtered to illuminance sensors);
+3. a Sun entity providing azimuth and elevation;
+4. room floor area;
+5. the number of external glazed openings;
+6. optional indoor illuminance sensors;
+7. optional artificial lights that invalidate indoor lux readings; and
+8. each window or glazed door, including width, height, outward-facing azimuth and optional covering entity.
+
+After setup, use **Configure / Options** to change the optional indoor sensors and lights. Use **Reconfigure** from the config-entry menu to change the outdoor source, Sun entity, room area, or windows.
 
 Window azimuth follows the standard compass convention:
 
