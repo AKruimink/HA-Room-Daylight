@@ -27,9 +27,9 @@ from .const import (
     CONF_HEIGHT,
     CONF_INDOOR_ILLUMINANCE,
     CONF_OUTSIDE_ILLUMINANCE,
+    CONF_SUN_ENTITY,
     CONF_WIDTH,
     CONF_WINDOWS,
-    SUN_ENTITY_ID,
 )
 
 
@@ -121,10 +121,20 @@ class RoomDaylightSensor(SensorEntity):
 
         dependencies: set[str] = {
             self._entry.data[CONF_OUTSIDE_ILLUMINANCE],
-            SUN_ENTITY_ID,
+            self._entry.data[CONF_SUN_ENTITY],
         }
-        dependencies.update(self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []))
-        dependencies.update(self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, []))
+        dependencies.update(
+            self._entry.options.get(
+                CONF_INDOOR_ILLUMINANCE,
+                self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []),
+            )
+        )
+        dependencies.update(
+            self._entry.options.get(
+                CONF_ARTIFICIAL_LIGHTS,
+                self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, []),
+            )
+        )
         dependencies.update(
             window[CONF_COVER_ENTITY]
             for window in self._entry.data.get(CONF_WINDOWS, [])
@@ -153,7 +163,8 @@ class RoomDaylightSensor(SensorEntity):
         outside_state = self.hass.states.get(outside_entity)
         outside_lux = _numeric_state(outside_state)
 
-        sun_state = self.hass.states.get(SUN_ENTITY_ID)
+        sun_entity = self._entry.data[CONF_SUN_ENTITY]
+        sun_state = self.hass.states.get(sun_entity)
         sun_azimuth = _float_attr(sun_state, "azimuth")
         sun_elevation = _float_attr(sun_state, "elevation")
 
@@ -184,7 +195,10 @@ class RoomDaylightSensor(SensorEntity):
                 }
             )
 
-        light_entities = self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, [])
+        light_entities = self._entry.options.get(
+            CONF_ARTIFICIAL_LIGHTS,
+            self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, []),
+        )
         artificial_light_on = any(
             (state := self.hass.states.get(entity_id)) is not None
             and state.state == STATE_ON
@@ -194,7 +208,11 @@ class RoomDaylightSensor(SensorEntity):
         indoor_values: list[float] = []
         indoor_used: list[str] = []
         if not artificial_light_on:
-            for entity_id in self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []):
+            indoor_entities = self._entry.options.get(
+                CONF_INDOOR_ILLUMINANCE,
+                self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []),
+            )
+            for entity_id in indoor_entities:
                 value = _numeric_state(self.hass.states.get(entity_id))
                 if value is not None:
                     indoor_values.append(value)
@@ -213,6 +231,7 @@ class RoomDaylightSensor(SensorEntity):
         self._diagnostics = {
             "outside_illuminance": round(outside_lux, 1),
             "outside_illuminance_entity": outside_entity,
+            "sun_entity": sun_entity,
             "sun_azimuth": round(sun_azimuth, 1),
             "sun_elevation": round(sun_elevation, 1),
             "base_estimate": round(estimate.base_lux, 1),
@@ -233,6 +252,6 @@ class RoomDaylightSensor(SensorEntity):
             "windows_covered": estimate.covered_windows,
             "covered_by": covered_entities,
             "floor_area_m2": float(self._entry.data[CONF_FLOOR_AREA]),
-            "model_version": 1,
+            "model_version": 2,
             "source_available": True,
         }
