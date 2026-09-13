@@ -1,0 +1,36 @@
+{
+  "title": "Room Daylight",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Create a room daylight sensor",
+        "description": "Choose an outdoor illuminance source that already reflects current weather/cloud conditions. Indoor lux sensors are optional supporting inputs; they are ignored while any selected artificial light is on.",
+        "data": {
+          "name": "Room name",
+          "outside_illuminance": "Outdoor illuminance sensor",
+          "floor_area": "Floor area (m²)",
+          "indoor_illuminance": "Optional indoor lux sensors",
+          "artificial_lights": "Lights that invalidate indoor lux readings"
+        }
+      },
+      "window": {
+        "title": "Window {window_number}",
+        "description": "Enter the glazed opening dimensions and outward-facing azimuth. North = 0°, East = 90°, South = 180°, West = 270°. A linked cover is excluded when fully closed; a binary sensor or input boolean is excluded when it is on.",
+        "data": {
+          "width": "Width (m)",
+          "height": "Height (m)",
+          "azimuth": "Window azimuth (°)",
+          "cover_entity": "Optional covering entity",
+          "add_another": "Add another window"
+        }
+      }
+    },
+    "error": {
+      "required": "This field is required."
+    },
+    "abort": {
+      "already_configured": "A room with this name is already configured."
+    }
+  }
+}

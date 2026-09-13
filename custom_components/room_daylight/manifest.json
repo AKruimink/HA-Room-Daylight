@@ -1,0 +1,11 @@
+{
+  "domain": "room_daylight",
+  "name": "Room Daylight",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/AKruimink/HA-Room-Daylight",
+  "integration_type": "helper",
+  "requirements": [],
+  "version": "0.1.0"
+}
