@@ -138,6 +138,10 @@ Repository validation runs through GitHub Actions using both Hassfest and HACS v
 
 The integration includes local Home Assistant branding assets under `custom_components/room_daylight/brand/` so the icon can be used in Home Assistant and by HACS.
 
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting code changes.
+
 ## Licence
 
 MIT

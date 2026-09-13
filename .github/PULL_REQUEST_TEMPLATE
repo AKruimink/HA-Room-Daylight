@@ -1,0 +1,23 @@
+## Summary
+
+<!-- Briefly describe what this pull request changes and why. -->
+
+## Changes
+
+- 
+
+## Testing
+
+<!-- Describe how you tested the change. -->
+
+- [ ] Unit tests pass locally
+- [ ] Hassfest passes
+- [ ] HACS validation passes
+
+## Checklist
+
+- [ ] I have kept the change focused and avoided unrelated refactoring
+- [ ] I have updated documentation where behaviour or configuration changed
+- [ ] I have added or updated tests for calculation changes
+- [ ] I have not committed secrets, tokens, personal location data, or Home Assistant configuration containing sensitive information
+- [ ] Breaking changes are clearly documented
