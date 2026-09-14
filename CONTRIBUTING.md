@@ -1,27 +1,76 @@
 # Contributing to Room Daylight
 
-Contributions are welcome through GitHub pull requests.
+Contributions are welcome. Keeping the code easy to understand is a project goal, so focused changes are preferred over large unrelated refactors.
 
-## Before opening a pull request
+## Workflow
 
 1. Fork the repository.
-2. Create a branch from `dev` for your change.
-3. Keep changes focused on one feature or fix.
-4. Add or update tests when changing the daylight calculation.
-5. Run the unit tests:
+2. Create a branch from `dev`.
+3. Make one focused change per pull request.
+4. Open the pull request back into `dev`.
+5. Add or update tests when behaviour changes.
 
-   ```bash
-   python -m unittest discover -s tests -v
-   ```
+Useful branch names include:
 
-6. Make sure the GitHub Hassfest and HACS validation checks pass.
+```text
+feature/window-transmission
+fix/missing-sun-state
+docs/improve-setup-guide
+```
+
+## Project structure
+
+The integration is intentionally small:
+
+```text
+custom_components/room_daylight/
+├── __init__.py       # Config-entry lifecycle and migrations
+├── calculation.py    # Pure daylight model; no Home Assistant dependencies
+├── config_flow.py    # Setup, reconfigure and options flows
+├── const.py          # Shared config keys and model defaults
+└── sensor.py         # Home Assistant entities and state collection
+```
+
+Keep calculation logic in `calculation.py` where possible. Home Assistant state handling belongs in the entity/config layers rather than in the pure model.
+
+## Python style
+
+Follow the style already used in the integration:
+
+- use type hints for function inputs and return values;
+- prefer small functions with one clear responsibility;
+- use descriptive names instead of abbreviations;
+- keep control flow shallow where practical;
+- add comments for *why* something is done, not for obvious syntax;
+- use docstrings for public classes/functions and non-obvious helpers;
+- avoid duplicating model logic in the Home Assistant entity layer;
+- keep behaviour changes separate from formatting/refactoring changes when possible.
+
+The code targets modern Python and Home Assistant. Keep formatting compatible with standard Ruff/Black-style Python formatting (88-character lines where practical).
+
+## Tests
+
+Run the pure calculation tests before opening a pull request:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+You can also check that the integration compiles cleanly:
+
+```bash
+python -m compileall custom_components/room_daylight tests
+```
+
+GitHub Actions additionally runs Hassfest and HACS validation. All required checks should pass before a pull request is merged.
 
 ## Pull requests
 
-Please explain what the change does, why it is needed, and how it was tested. Screenshots are useful for config-flow or Home Assistant UI changes.
+Please include:
 
-Do not include Home Assistant secrets, tokens, precise location data, or other private information in issues, logs, fixtures, or pull requests.
+- what changed;
+- why the change is useful;
+- how it was tested; and
+- screenshots for user-interface changes where helpful.
 
-## Code ownership
-
-The maintainer reviews and merges changes to the default branch. Opening a pull request does not grant direct write access to the repository.
+Do not include Home Assistant secrets, access tokens, precise location data or other private configuration in issues, fixtures, logs or pull requests.

@@ -1,7 +1,8 @@
-"""Constants for the Room Daylight integration."""
+"""Constants for Room Daylight."""
 
 DOMAIN = "room_daylight"
 
+# Config-entry keys.
 CONF_OUTSIDE_ILLUMINANCE = "outside_illuminance"
 CONF_SUN_ENTITY = "sun_entity"
 CONF_FLOOR_AREA = "floor_area"
@@ -14,8 +15,9 @@ CONF_COVER_ENTITY = "cover_entity"
 CONF_INDOOR_ILLUMINANCE = "indoor_illuminance"
 CONF_ARTIFICIAL_LIGHTS = "artificial_lights"
 
+# Defaults retained for existing model behaviour. A later configuration change
+# can expose these without changing the calculation module's public interface.
 DEFAULT_SUN_ENTITY = "sun.sun"
-
 DEFAULT_WINDOW_TRANSMISSION = 0.65
 DEFAULT_DAYLIGHT_GAIN = 0.15
 DEFAULT_DIFFUSE_BASE = 0.35

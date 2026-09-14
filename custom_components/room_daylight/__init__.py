@@ -1,4 +1,4 @@
-"""Room Daylight integration."""
+"""Room Daylight integration lifecycle."""
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -15,6 +15,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data = dict(entry.data)
         data.setdefault(CONF_SUN_ENTITY, DEFAULT_SUN_ENTITY)
         hass.config_entries.async_update_entry(entry, data=data, version=2)
+
     return True
 
 

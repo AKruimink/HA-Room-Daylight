@@ -1,12 +1,17 @@
-"""Estimated daylight sensors for Room Daylight."""
+"""Sensor platform for Room Daylight."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.cover import ATTR_CURRENT_POSITION
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     LIGHT_LUX,
@@ -16,7 +21,10 @@ from homeassistant.const import (
     STATE_UNKNOWN,
 )
 from homeassistant.core import Event, HomeAssistant, State, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -43,6 +51,50 @@ from .const import (
 )
 
 
+@dataclass(slots=True, frozen=True)
+class _DiagnosticSensorDefinition:
+    """Description of one disabled-by-default diagnostic sensor."""
+
+    key: str
+    label: str
+    value_fn: Callable[[DaylightEstimate], float | None]
+    unit: str
+    device_class: SensorDeviceClass | None = None
+    precision: int = 0
+
+
+DIAGNOSTIC_SENSORS = (
+    _DiagnosticSensorDefinition(
+        key="native_daylight",
+        label="Native Daylight",
+        value_fn=lambda estimate: estimate.base_lux,
+        unit=LIGHT_LUX,
+        device_class=SensorDeviceClass.ILLUMINANCE,
+    ),
+    _DiagnosticSensorDefinition(
+        key="indoor_sensor_median",
+        label="Indoor Sensor Median",
+        value_fn=lambda estimate: estimate.indoor_median_lux,
+        unit=LIGHT_LUX,
+        device_class=SensorDeviceClass.ILLUMINANCE,
+    ),
+    _DiagnosticSensorDefinition(
+        key="indoor_sensor_adjustment",
+        label="Indoor Sensor Adjustment",
+        value_fn=lambda estimate: estimate.sensor_adjustment_lux,
+        unit=LIGHT_LUX,
+        precision=1,
+    ),
+    _DiagnosticSensorDefinition(
+        key="effective_daylight_ratio",
+        label="Effective Daylight Ratio",
+        value_fn=lambda estimate: estimate.effective_daylight_ratio_pct,
+        unit=PERCENTAGE,
+        precision=2,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -50,82 +102,47 @@ async def async_setup_entry(
 ) -> None:
     """Set up Room Daylight sensors for one configured room."""
     primary = RoomDaylightSensor(entry)
-    async_add_entities(
-        [
-            primary,
-            RoomDaylightDiagnosticSensor(
-                entry=entry,
-                parent=primary,
-                key="native_daylight",
-                label="Native Daylight",
-                value_fn=lambda estimate: estimate.base_lux,
-                unit=LIGHT_LUX,
-                device_class=SensorDeviceClass.ILLUMINANCE,
-                precision=0,
-            ),
-            RoomDaylightDiagnosticSensor(
-                entry=entry,
-                parent=primary,
-                key="indoor_sensor_median",
-                label="Indoor Sensor Median",
-                value_fn=lambda estimate: estimate.indoor_median_lux,
-                unit=LIGHT_LUX,
-                device_class=SensorDeviceClass.ILLUMINANCE,
-                precision=0,
-            ),
-            RoomDaylightDiagnosticSensor(
-                entry=entry,
-                parent=primary,
-                key="indoor_sensor_adjustment",
-                label="Indoor Sensor Adjustment",
-                value_fn=lambda estimate: estimate.sensor_adjustment_lux,
-                unit=LIGHT_LUX,
-                device_class=None,
-                precision=1,
-            ),
-            RoomDaylightDiagnosticSensor(
-                entry=entry,
-                parent=primary,
-                key="effective_daylight_ratio",
-                label="Effective Daylight Ratio",
-                value_fn=lambda estimate: estimate.effective_daylight_ratio_pct,
-                unit=PERCENTAGE,
-                device_class=None,
-                precision=2,
-            ),
-        ]
-    )
+    diagnostics = [
+        RoomDaylightDiagnosticSensor(entry, primary, description)
+        for description in DIAGNOSTIC_SENSORS
+    ]
+    async_add_entities([primary, *diagnostics])
 
 
 def _numeric_state(state: State | None) -> float | None:
+    """Return a state's numeric value, or ``None`` when it is unavailable."""
     if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
         return None
+
     try:
         return float(state.state)
     except (TypeError, ValueError):
         return None
 
 
-def _float_attr(state: State | None, attribute: str) -> float | None:
+def _float_attribute(state: State | None, attribute: str) -> float | None:
+    """Return a numeric state attribute when available."""
     if state is None:
         return None
+
+    value = state.attributes.get(attribute)
+    if value is None:
+        return None
+
     try:
-        value = state.attributes.get(attribute)
-        if value is None:
-            return None
         return float(value)
     except (TypeError, ValueError):
         return None
 
 
 def _is_window_covered(state: State | None) -> bool:
-    """Treat a linked cover/binary helper as window coverage."""
+    """Return whether a linked cover or helper currently blocks the window."""
     if state is None:
         return False
 
-    domain = state.entity_id.split(".", 1)[0]
+    domain = state.entity_id.partition(".")[0]
     if domain == "cover":
-        position = _float_attr(state, ATTR_CURRENT_POSITION)
+        position = _float_attribute(state, ATTR_CURRENT_POSITION)
         if position is not None and position <= 0:
             return True
         return state.state in {"closed", "closing"}
@@ -134,6 +151,133 @@ def _is_window_covered(state: State | None) -> bool:
         return state.state == STATE_ON
 
     return False
+
+
+def _configured_entities(entry: ConfigEntry, key: str) -> list[str]:
+    """Return an entity list from options, falling back to config-entry data."""
+    return list(entry.options.get(key, entry.data.get(key, [])))
+
+
+def _dependencies(entry: ConfigEntry) -> set[str]:
+    """Return all Home Assistant entities that can change the room estimate."""
+    entities = {
+        entry.data[CONF_OUTSIDE_ILLUMINANCE],
+        entry.data[CONF_SUN_ENTITY],
+    }
+    entities.update(_configured_entities(entry, CONF_INDOOR_ILLUMINANCE))
+    entities.update(_configured_entities(entry, CONF_ARTIFICIAL_LIGHTS))
+    entities.update(
+        window[CONF_COVER_ENTITY]
+        for window in entry.data.get(CONF_WINDOWS, [])
+        if window.get(CONF_COVER_ENTITY)
+    )
+    return entities
+
+
+def _runtime_windows(
+    hass: HomeAssistant,
+    configured_windows: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Resolve configured windows against their current covering states."""
+    windows: list[dict[str, Any]] = []
+    covered_entities: list[str] = []
+
+    for configured in configured_windows:
+        cover_entity = configured.get(CONF_COVER_ENTITY)
+        covered = bool(
+            cover_entity
+            and _is_window_covered(hass.states.get(str(cover_entity)))
+        )
+        if covered and cover_entity:
+            covered_entities.append(str(cover_entity))
+
+        window = {
+            CONF_WIDTH: configured[CONF_WIDTH],
+            CONF_HEIGHT: configured[CONF_HEIGHT],
+            CONF_AZIMUTH: configured[CONF_AZIMUTH],
+            "covered": covered,
+        }
+        if "transmission" in configured:
+            window["transmission"] = configured["transmission"]
+        windows.append(window)
+
+    return windows, covered_entities
+
+
+def _active_lights(hass: HomeAssistant, entity_ids: list[str]) -> list[str]:
+    """Return configured artificial lights that are currently on."""
+    return [
+        entity_id
+        for entity_id in entity_ids
+        if (state := hass.states.get(entity_id)) is not None
+        and state.state == STATE_ON
+    ]
+
+
+def _indoor_sensor_values(
+    hass: HomeAssistant,
+    entity_ids: list[str],
+    *,
+    suppressed: bool,
+) -> tuple[dict[str, float | None], list[float], list[str]]:
+    """Collect indoor readings and the subset eligible for model correction."""
+    readings: dict[str, float | None] = {}
+    values: list[float] = []
+    used_entities: list[str] = []
+
+    for entity_id in entity_ids:
+        value = _numeric_state(hass.states.get(entity_id))
+        readings[entity_id] = round(value, 1) if value is not None else None
+        if value is not None and not suppressed:
+            values.append(value)
+            used_entities.append(entity_id)
+
+    return readings, values, used_entities
+
+
+def _round_optional(value: float | None, digits: int = 1) -> float | None:
+    """Round an optional diagnostic value."""
+    return round(value, digits) if value is not None else None
+
+
+def _window_diagnostics(
+    configured_windows: list[dict[str, Any]],
+    estimate: DaylightEstimate,
+) -> list[dict[str, Any]]:
+    """Return Home Assistant-friendly diagnostics for each configured window."""
+    return [
+        {
+            "index": detail.index,
+            "width_m": round(detail.width_m, 3),
+            "height_m": round(detail.height_m, 3),
+            "physical_area_m2": round(detail.physical_area_m2, 3),
+            "effective_area_m2": round(detail.effective_area_m2, 3),
+            "azimuth": round(detail.azimuth, 1),
+            "transmission": round(detail.transmission, 3),
+            "orientation_factor": round(detail.orientation_factor, 3),
+            "covered": detail.covered,
+            "cover_entity": configured.get(CONF_COVER_ENTITY),
+            "contribution_lux": round(detail.contribution_lux, 1),
+        }
+        for configured, detail in zip(
+            configured_windows,
+            estimate.window_diagnostics,
+            strict=False,
+        )
+    ]
+
+
+def _model_parameters() -> dict[str, float]:
+    """Return the model defaults used by the current integration version."""
+    return {
+        "calibration": 1.0,
+        "daylight_gain": DEFAULT_DAYLIGHT_GAIN,
+        "diffuse_base": DEFAULT_DIFFUSE_BASE,
+        "window_transmission": DEFAULT_WINDOW_TRANSMISSION,
+        "sensor_blend": DEFAULT_SENSOR_BLEND,
+        "sensor_min_ratio": DEFAULT_SENSOR_MIN_RATIO,
+        "sensor_max_ratio": DEFAULT_SENSOR_MAX_RATIO,
+    }
 
 
 class RoomDaylightSensor(SensorEntity):
@@ -162,13 +306,11 @@ class RoomDaylightSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the estimated daylight in lux."""
-        if self._estimate is None:
-            return None
-        return round(self._estimate.final_lux)
+        return round(self._estimate.final_lux) if self._estimate else None
 
     @property
     def available(self) -> bool:
-        """Return whether source data is currently usable."""
+        """Return whether the required source data is available."""
         return self._estimate is not None
 
     @property
@@ -177,43 +319,20 @@ class RoomDaylightSensor(SensorEntity):
         return self._diagnostics
 
     async def async_added_to_hass(self) -> None:
-        """Subscribe to every entity that can affect the estimate."""
+        """Subscribe to every entity that can affect this room."""
         await super().async_added_to_hass()
-
-        dependencies: set[str] = {
-            self._entry.data[CONF_OUTSIDE_ILLUMINANCE],
-            self._entry.data[CONF_SUN_ENTITY],
-        }
-        dependencies.update(
-            self._entry.options.get(
-                CONF_INDOOR_ILLUMINANCE,
-                self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []),
-            )
-        )
-        dependencies.update(
-            self._entry.options.get(
-                CONF_ARTIFICIAL_LIGHTS,
-                self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, []),
-            )
-        )
-        dependencies.update(
-            window[CONF_COVER_ENTITY]
-            for window in self._entry.data.get(CONF_WINDOWS, [])
-            if window.get(CONF_COVER_ENTITY)
-        )
-
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass,
-                sorted(dependencies),
+                sorted(_dependencies(self._entry)),
                 self._handle_source_change,
             )
         )
         self._recalculate()
 
     @callback
-    def _handle_source_change(self, event: Event) -> None:
-        """Recalculate after any source entity changes."""
+    def _handle_source_change(self, _event: Event) -> None:
+        """Recalculate after a source entity changes."""
         self._recalculate()
         self.async_write_ha_state()
         async_dispatcher_send(self.hass, self._signal)
@@ -222,13 +341,12 @@ class RoomDaylightSensor(SensorEntity):
     def _recalculate(self) -> None:
         """Recalculate the estimate from current Home Assistant states."""
         outside_entity = self._entry.data[CONF_OUTSIDE_ILLUMINANCE]
-        outside_state = self.hass.states.get(outside_entity)
-        outside_lux = _numeric_state(outside_state)
+        outside_lux = _numeric_state(self.hass.states.get(outside_entity))
 
         sun_entity = self._entry.data[CONF_SUN_ENTITY]
         sun_state = self.hass.states.get(sun_entity)
-        sun_azimuth = _float_attr(sun_state, "azimuth")
-        sun_elevation = _float_attr(sun_state, "elevation")
+        sun_azimuth = _float_attribute(sun_state, "azimuth")
+        sun_elevation = _float_attribute(sun_state, "elevation")
 
         if outside_lux is None or sun_azimuth is None or sun_elevation is None:
             self._estimate = None
@@ -239,52 +357,19 @@ class RoomDaylightSensor(SensorEntity):
             }
             return
 
-        configured_windows = self._entry.data.get(CONF_WINDOWS, [])
-        windows: list[dict[str, Any]] = []
-        covered_entities: list[str] = []
-        for configured in configured_windows:
-            cover_entity = configured.get(CONF_COVER_ENTITY)
-            covered = False
-            if cover_entity:
-                covered = _is_window_covered(self.hass.states.get(cover_entity))
-                if covered:
-                    covered_entities.append(cover_entity)
+        configured_windows = list(self._entry.data.get(CONF_WINDOWS, []))
+        windows, covered_entities = _runtime_windows(self.hass, configured_windows)
 
-            window = {
-                CONF_WIDTH: configured[CONF_WIDTH],
-                CONF_HEIGHT: configured[CONF_HEIGHT],
-                CONF_AZIMUTH: configured[CONF_AZIMUTH],
-                "covered": covered,
-            }
-            if "transmission" in configured:
-                window["transmission"] = configured["transmission"]
-            windows.append(window)
+        light_entities = _configured_entities(self._entry, CONF_ARTIFICIAL_LIGHTS)
+        artificial_lights_on = _active_lights(self.hass, light_entities)
+        indoor_sensors_suppressed = bool(artificial_lights_on)
 
-        light_entities = self._entry.options.get(
-            CONF_ARTIFICIAL_LIGHTS,
-            self._entry.data.get(CONF_ARTIFICIAL_LIGHTS, []),
+        indoor_entities = _configured_entities(self._entry, CONF_INDOOR_ILLUMINANCE)
+        indoor_readings, indoor_values, indoor_used = _indoor_sensor_values(
+            self.hass,
+            indoor_entities,
+            suppressed=indoor_sensors_suppressed,
         )
-        artificial_lights_on = [
-            entity_id
-            for entity_id in light_entities
-            if (state := self.hass.states.get(entity_id)) is not None
-            and state.state == STATE_ON
-        ]
-        artificial_light_on = bool(artificial_lights_on)
-
-        indoor_entities = self._entry.options.get(
-            CONF_INDOOR_ILLUMINANCE,
-            self._entry.data.get(CONF_INDOOR_ILLUMINANCE, []),
-        )
-        indoor_readings: dict[str, float | None] = {}
-        indoor_values: list[float] = []
-        indoor_used: list[str] = []
-        for entity_id in indoor_entities:
-            value = _numeric_state(self.hass.states.get(entity_id))
-            indoor_readings[entity_id] = round(value, 1) if value is not None else None
-            if not artificial_light_on and value is not None:
-                indoor_values.append(value)
-                indoor_used.append(entity_id)
 
         estimate = estimate_room_daylight(
             outside_lux=outside_lux,
@@ -295,27 +380,6 @@ class RoomDaylightSensor(SensorEntity):
             indoor_lux_values=indoor_values,
         )
         self._estimate = estimate
-
-        window_details: list[dict[str, Any]] = []
-        for configured, detail in zip(
-            configured_windows, estimate.window_diagnostics, strict=False
-        ):
-            window_details.append(
-                {
-                    "index": detail.index,
-                    "width_m": round(detail.width_m, 3),
-                    "height_m": round(detail.height_m, 3),
-                    "physical_area_m2": round(detail.physical_area_m2, 3),
-                    "effective_area_m2": round(detail.effective_area_m2, 3),
-                    "azimuth": round(detail.azimuth, 1),
-                    "transmission": round(detail.transmission, 3),
-                    "orientation_factor": round(detail.orientation_factor, 3),
-                    "covered": detail.covered,
-                    "cover_entity": configured.get(CONF_COVER_ENTITY),
-                    "contribution_lux": round(detail.contribution_lux, 1),
-                }
-            )
-
         self._diagnostics = {
             "outside_illuminance": round(outside_lux, 1),
             "outside_illuminance_entity": outside_entity,
@@ -326,66 +390,46 @@ class RoomDaylightSensor(SensorEntity):
             "base_estimate": round(estimate.base_lux, 1),
             "final_estimate": round(estimate.final_lux, 1),
             "effective_daylight_ratio_pct": round(
-                estimate.effective_daylight_ratio_pct, 2
+                estimate.effective_daylight_ratio_pct,
+                2,
             ),
-            "indoor_sensor_median": (
-                round(estimate.indoor_median_lux, 1)
-                if estimate.indoor_median_lux is not None
-                else None
-            ),
-            "bounded_indoor_estimate": (
-                round(estimate.bounded_indoor_lux, 1)
-                if estimate.bounded_indoor_lux is not None
-                else None
-            ),
+            "indoor_sensor_median": _round_optional(estimate.indoor_median_lux),
+            "bounded_indoor_estimate": _round_optional(estimate.bounded_indoor_lux),
             "indoor_sensor_adjustment_lux": round(
-                estimate.sensor_adjustment_lux, 1
+                estimate.sensor_adjustment_lux,
+                1,
             ),
             "indoor_sensor_adjustment_pct": round(
-                estimate.sensor_adjustment_pct, 2
+                estimate.sensor_adjustment_pct,
+                2,
             ),
             "indoor_sensors_configured": len(indoor_entities),
             "indoor_sensors_used_count": estimate.indoor_sensor_count,
-            "indoor_sensor_min_lux": (
-                round(estimate.indoor_sensor_min_lux, 1)
-                if estimate.indoor_sensor_min_lux is not None
-                else None
-            ),
-            "indoor_sensor_max_lux": (
-                round(estimate.indoor_sensor_max_lux, 1)
-                if estimate.indoor_sensor_max_lux is not None
-                else None
-            ),
-            "indoor_sensor_spread_lux": (
-                round(estimate.indoor_sensor_spread_lux, 1)
-                if estimate.indoor_sensor_spread_lux is not None
-                else None
+            "indoor_sensor_min_lux": _round_optional(estimate.indoor_sensor_min_lux),
+            "indoor_sensor_max_lux": _round_optional(estimate.indoor_sensor_max_lux),
+            "indoor_sensor_spread_lux": _round_optional(
+                estimate.indoor_sensor_spread_lux
             ),
             "indoor_sensor_readings": indoor_readings,
             "indoor_sensors_used": indoor_used,
-            "indoor_sensors_suppressed_by_lights": artificial_light_on,
+            "indoor_sensors_suppressed_by_lights": indoor_sensors_suppressed,
             "artificial_lights_on": artificial_lights_on,
             "windows_configured": len(windows),
             "windows_active": estimate.active_windows,
             "windows_covered": estimate.covered_windows,
             "covered_by": covered_entities,
-            "window_contributions": window_details,
-            "model_parameters": {
-                "calibration": 1.0,
-                "daylight_gain": DEFAULT_DAYLIGHT_GAIN,
-                "diffuse_base": DEFAULT_DIFFUSE_BASE,
-                "window_transmission": DEFAULT_WINDOW_TRANSMISSION,
-                "sensor_blend": DEFAULT_SENSOR_BLEND,
-                "sensor_min_ratio": DEFAULT_SENSOR_MIN_RATIO,
-                "sensor_max_ratio": DEFAULT_SENSOR_MAX_RATIO,
-            },
+            "window_contributions": _window_diagnostics(
+                configured_windows,
+                estimate,
+            ),
+            "model_parameters": _model_parameters(),
             "model_version": 2,
             "source_available": True,
         }
 
 
 class RoomDaylightDiagnosticSensor(SensorEntity):
-    """Disabled-by-default diagnostic sensor backed by the room calculation."""
+    """Disabled-by-default diagnostic value from the room calculation."""
 
     _attr_should_poll = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -394,25 +438,19 @@ class RoomDaylightDiagnosticSensor(SensorEntity):
 
     def __init__(
         self,
-        *,
         entry: ConfigEntry,
         parent: RoomDaylightSensor,
-        key: str,
-        label: str,
-        value_fn: Callable[[DaylightEstimate], float | None],
-        unit: str,
-        device_class: SensorDeviceClass | None,
-        precision: int,
+        description: _DiagnosticSensorDefinition,
     ) -> None:
         """Initialise a diagnostic entity."""
         self._parent = parent
-        self._value_fn = value_fn
+        self._description = description
         self._signal = f"{DOMAIN}_{entry.entry_id}_diagnostics_update"
-        self._attr_unique_id = f"{entry.entry_id}_{key}"
-        self._attr_name = f"{entry.title} {label}"
-        self._attr_native_unit_of_measurement = unit
-        self._attr_device_class = device_class
-        self._attr_suggested_display_precision = precision
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_name = f"{entry.title} {description.label}"
+        self._attr_native_unit_of_measurement = description.unit
+        self._attr_device_class = description.device_class
+        self._attr_suggested_display_precision = description.precision
 
     @property
     def native_value(self) -> float | None:
@@ -420,19 +458,21 @@ class RoomDaylightDiagnosticSensor(SensorEntity):
         estimate = self._parent.estimate
         if estimate is None:
             return None
-        value = self._value_fn(estimate)
+
+        value = self._description.value_fn(estimate)
         if value is None:
             return None
-        return round(value, self._attr_suggested_display_precision)
+
+        return round(value, self._description.precision)
 
     @property
     def available(self) -> bool:
         """Return whether the selected diagnostic has a value."""
         estimate = self._parent.estimate
-        return estimate is not None and self._value_fn(estimate) is not None
+        return estimate is not None and self._description.value_fn(estimate) is not None
 
     async def async_added_to_hass(self) -> None:
-        """Update when the primary room calculation changes."""
+        """Update whenever the primary room calculation changes."""
         await super().async_added_to_hass()
         self.async_on_remove(
             async_dispatcher_connect(
