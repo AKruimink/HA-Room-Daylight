@@ -61,16 +61,19 @@ def _number_selector(
     maximum: float | None = None,
     unit: str | None = None,
 ) -> NumberSelector:
-    """Create a numeric box with matching frontend range validation."""
-    return NumberSelector(
-        NumberSelectorConfig(
-            min=minimum,
-            max=maximum,
-            step=step,
-            mode=NumberSelectorMode.BOX,
-            unit_of_measurement=unit,
-        )
+    """Create a numeric box without serialising unset selector options."""
+    config = NumberSelectorConfig(
+        step=step,
+        mode=NumberSelectorMode.BOX,
     )
+    if minimum is not None:
+        config["min"] = minimum
+    if maximum is not None:
+        config["max"] = maximum
+    if unit is not None:
+        config["unit_of_measurement"] = unit
+
+    return NumberSelector(config)
 
 
 def _illuminance_selector(*, multiple: bool = False) -> EntitySelector:

@@ -54,6 +54,7 @@ from .const import (
     DEFAULT_SENSOR_BLEND,
     DEFAULT_SENSOR_MAX_RATIO,
     DEFAULT_SENSOR_MIN_RATIO,
+    DEFAULT_SUN_ENTITY,
     DOMAIN,
 )
 
@@ -167,14 +168,18 @@ def _configured_entities(entry: ConfigEntry, key: str) -> list[str]:
 
 def _dependencies(entry: ConfigEntry) -> set[str]:
     """Return all Home Assistant entities that can change the room estimate."""
-    entities = {
-        entry.data[CONF_OUTSIDE_ILLUMINANCE],
-        entry.data[CONF_SUN_ENTITY],
-    }
+    entities: set[str] = set()
+
+    if outside_entity := entry.data.get(CONF_OUTSIDE_ILLUMINANCE):
+        entities.add(str(outside_entity))
+
+    sun_entity = entry.data.get(CONF_SUN_ENTITY) or DEFAULT_SUN_ENTITY
+    entities.add(str(sun_entity))
+
     entities.update(_configured_entities(entry, CONF_INDOOR_ILLUMINANCE))
     entities.update(_configured_entities(entry, CONF_ARTIFICIAL_LIGHTS))
     entities.update(
-        window[CONF_COVER_ENTITY]
+        str(window[CONF_COVER_ENTITY])
         for window in entry.data.get(CONF_WINDOWS, [])
         if window.get(CONF_COVER_ENTITY)
     )
@@ -359,20 +364,41 @@ class RoomDaylightSensor(SensorEntity):
     @callback
     def _recalculate(self) -> None:
         """Recalculate the estimate from current Home Assistant states."""
-        outside_entity = self._entry.data[CONF_OUTSIDE_ILLUMINANCE]
-        outside_lux = _numeric_state(self.hass.states.get(outside_entity))
+        outside_entity = self._entry.data.get(CONF_OUTSIDE_ILLUMINANCE)
+        sun_entity = self._entry.data.get(CONF_SUN_ENTITY) or DEFAULT_SUN_ENTITY
 
-        sun_entity = self._entry.data[CONF_SUN_ENTITY]
-        sun_state = self.hass.states.get(sun_entity)
+        outside_state = (
+            self.hass.states.get(str(outside_entity)) if outside_entity else None
+        )
+        outside_lux = _numeric_state(outside_state)
+
+        sun_state = self.hass.states.get(str(sun_entity))
         sun_azimuth = _float_attribute(sun_state, "azimuth")
         sun_elevation = _float_attribute(sun_state, "elevation")
 
-        if outside_lux is None or sun_azimuth is None or sun_elevation is None:
+        unavailable_reason: str | None = None
+        if not outside_entity:
+            unavailable_reason = "outside_illuminance_not_configured"
+        elif outside_lux is None:
+            unavailable_reason = "outside_illuminance_unavailable"
+        elif sun_state is None:
+            unavailable_reason = "sun_entity_unavailable"
+        elif sun_azimuth is None:
+            unavailable_reason = "sun_azimuth_unavailable"
+        elif sun_elevation is None:
+            unavailable_reason = "sun_elevation_unavailable"
+
+        if unavailable_reason is not None:
             self._estimate = None
             self._diagnostics = {
                 "outside_illuminance_entity": outside_entity,
+                "outside_illuminance_state": (
+                    outside_state.state if outside_state is not None else None
+                ),
                 "sun_entity": sun_entity,
+                "sun_state": sun_state.state if sun_state is not None else None,
                 "source_available": False,
+                "unavailable_reason": unavailable_reason,
             }
             return
 
