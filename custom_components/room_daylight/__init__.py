@@ -57,19 +57,21 @@ def _add_model_defaults(data: dict) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate older Room Daylight config entries."""
+    """Migrate and repair Room Daylight config entries."""
     data = dict(entry.data)
     version = entry.version
     changed = False
 
-    if version == 1:
-        if CONF_SUN_ENTITY not in data:
-            data[CONF_SUN_ENTITY] = DEFAULT_SUN_ENTITY
-            changed = True
-        version = 2
+    # Repair required fields even when an entry was already marked as migrated.
+    # This makes development-branch upgrades resilient to partially applied
+    # schemas and also protects users upgrading from older snapshots.
+    if not data.get(CONF_SUN_ENTITY):
+        data[CONF_SUN_ENTITY] = DEFAULT_SUN_ENTITY
+        changed = True
 
-    if version == 2:
-        changed = _add_model_defaults(data) or changed
+    changed = _add_model_defaults(data) or changed
+
+    if version < 3:
         version = 3
 
     if changed or version != entry.version:
