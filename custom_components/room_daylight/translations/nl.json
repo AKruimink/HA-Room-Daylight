@@ -7,11 +7,11 @@
         "title": "Maak een daglichtsensor voor een ruimte",
         "description": "Configureer de ruimte en de bronentiteiten waarmee het natuurlijke daglicht wordt geschat. De raamgegevens worden in de volgende stap ingevoerd.",
         "data": {
-          "name": "Naam van de ruimte",
-          "outside_illuminance": "Buitenverlichtingssensor",
-          "sun_entity": "Zonentiteit",
-          "floor_area": "Vloeroppervlak",
-          "window_count": "Aantal ramen / glasopeningen",
+          "name": "Naam van de ruimte *",
+          "outside_illuminance": "Buitenverlichtingssensor *",
+          "sun_entity": "Zonentiteit *",
+          "floor_area": "Vloeroppervlak *",
+          "window_count": "Aantal ramen / glasopeningen *",
           "indoor_illuminance": "Optionele verlichtingssensoren binnen",
           "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt",
           "show_advanced": "Configure advanced model settings"
@@ -31,10 +31,10 @@
         "title": "Daglichtmodel opnieuw configureren",
         "description": "Werk de daglichtbron, zonentiteit, ruimtegrootte of ramen bij. Binnensensoren en kunstlichtuitsluitingen kunnen via Configureren / Opties worden gewijzigd.",
         "data": {
-          "outside_illuminance": "Buitenverlichtingssensor",
-          "sun_entity": "Zonentiteit",
-          "floor_area": "Vloeroppervlak",
-          "window_count": "Aantal ramen / glasopeningen",
+          "outside_illuminance": "Buitenverlichtingssensor *",
+          "sun_entity": "Zonentiteit *",
+          "floor_area": "Vloeroppervlak *",
+          "window_count": "Aantal ramen / glasopeningen *",
           "show_advanced": "Configure advanced model settings"
         },
         "data_description": {
@@ -49,11 +49,11 @@
         "title": "Raam {window_number} van {window_total}",
         "description": "Voer één externe glasopening in. Meet ongeveer de glasopening en niet de muur. Azimut is de kompasrichting waarin het raam naar buiten kijkt: Noord 0°, Oost 90°, Zuid 180°, West 270°.",
         "data": {
-          "width": "Glasbreedte",
-          "height": "Glashoogte",
-          "azimuth": "Naar buiten gerichte azimut",
+          "width": "Glasbreedte *",
+          "height": "Glashoogte *",
+          "azimuth": "Naar buiten gerichte azimut *",
           "cover_entity": "Optionele jaloezie-/gordijnentiteit",
-          "transmission": "Window transmission"
+          "transmission": "Window transmission *"
         },
         "data_description": {
           "width": "Geschatte breedte van de glasopening in meter. Meet bij Franse of schuifdeuren de volledige glazen deuropening.",
@@ -67,12 +67,12 @@
         "title": "Advanced daylight model",
         "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
         "data": {
-          "calibration": "Room calibration",
-          "daylight_gain": "Daylight gain",
-          "diffuse_base": "Diffuse daylight factor",
-          "sensor_blend": "Indoor sensor blend",
-          "sensor_min_ratio": "Minimum sensor correction ratio",
-          "sensor_max_ratio": "Maximum sensor correction ratio"
+          "calibration": "Room calibration *",
+          "daylight_gain": "Daylight gain *",
+          "diffuse_base": "Diffuse daylight factor *",
+          "sensor_blend": "Indoor sensor blend *",
+          "sensor_min_ratio": "Minimum sensor correction ratio *",
+          "sensor_max_ratio": "Maximum sensor correction ratio *"
         },
         "data_description": {
           "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",

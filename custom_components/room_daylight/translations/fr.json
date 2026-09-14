@@ -7,11 +7,11 @@
         "title": "Créer un capteur de lumière du jour pour une pièce",
         "description": "Configure the room and the source entities used to estimate its natural daylight. Window details are entered on the next step.",
         "data": {
-          "name": "Nom de la pièce",
-          "outside_illuminance": "Capteur d’éclairement extérieur",
-          "sun_entity": "Entité Soleil",
-          "floor_area": "Surface au sol",
-          "window_count": "Nombre de fenêtres / ouvertures vitrées",
+          "name": "Nom de la pièce *",
+          "outside_illuminance": "Capteur d’éclairement extérieur *",
+          "sun_entity": "Entité Soleil *",
+          "floor_area": "Surface au sol *",
+          "window_count": "Nombre de fenêtres / ouvertures vitrées *",
           "indoor_illuminance": "Capteurs d’éclairement intérieur facultatifs",
           "artificial_lights": "Éclairages artificiels influençant les capteurs",
           "show_advanced": "Configure advanced model settings"
@@ -31,10 +31,10 @@
         "title": "Reconfigure room daylight",
         "description": "Update the daylight source, Sun entity, room size, or windows. Indoor illuminance sensors and artificial-light exclusions can be changed from Configure / Options.",
         "data": {
-          "outside_illuminance": "Capteur d’éclairement extérieur",
-          "sun_entity": "Entité Soleil",
-          "floor_area": "Surface au sol",
-          "window_count": "Nombre de fenêtres / ouvertures vitrées",
+          "outside_illuminance": "Capteur d’éclairement extérieur *",
+          "sun_entity": "Entité Soleil *",
+          "floor_area": "Surface au sol *",
+          "window_count": "Nombre de fenêtres / ouvertures vitrées *",
           "show_advanced": "Configure advanced model settings"
         },
         "data_description": {
@@ -49,11 +49,11 @@
         "title": "Fenêtre {window_number} sur {window_total}",
         "description": "Enter one external glazed opening. Measure the approximate glazed opening rather than the wall. Azimuth is the compass direction the window faces outwards: North 0°, East 90°, South 180°, West 270°. A phone compass can be used if needed.",
         "data": {
-          "width": "Largeur vitrée",
-          "height": "Hauteur vitrée",
-          "azimuth": "Azimut vers l’extérieur",
+          "width": "Largeur vitrée *",
+          "height": "Hauteur vitrée *",
+          "azimuth": "Azimut vers l’extérieur *",
           "cover_entity": "Entité de store / rideau facultative",
-          "transmission": "Window transmission"
+          "transmission": "Window transmission *"
         },
         "data_description": {
           "width": "Approximate width of the glazed opening in metres. For French or patio doors, measure the complete glazed doorway.",
@@ -67,12 +67,12 @@
         "title": "Advanced daylight model",
         "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
         "data": {
-          "calibration": "Room calibration",
-          "daylight_gain": "Daylight gain",
-          "diffuse_base": "Diffuse daylight factor",
-          "sensor_blend": "Indoor sensor blend",
-          "sensor_min_ratio": "Minimum sensor correction ratio",
-          "sensor_max_ratio": "Maximum sensor correction ratio"
+          "calibration": "Room calibration *",
+          "daylight_gain": "Daylight gain *",
+          "diffuse_base": "Diffuse daylight factor *",
+          "sensor_blend": "Indoor sensor blend *",
+          "sensor_min_ratio": "Minimum sensor correction ratio *",
+          "sensor_max_ratio": "Maximum sensor correction ratio *"
         },
         "data_description": {
           "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",

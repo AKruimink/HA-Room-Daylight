@@ -112,25 +112,30 @@ def _covering_selector() -> EntitySelector:
 
 def _window_count_selector() -> NumberSelector:
     """Create the selector used for the number of exterior openings."""
-    return _number_selector(step=1, minimum=1, maximum=MAX_WINDOWS)
+    # Range validation is handled in the flow so errors can be attached to
+    # this specific field instead of being intercepted by the frontend.
+    return _number_selector(step=1)
 
 
 def _room_schema(*, include_name: bool) -> vol.Schema:
     """Build the common room form schema."""
     fields: dict[Any, Any] = {}
+    # Fields that need field-specific validation are intentionally optional in
+    # the Voluptuous schema. Home Assistant's frontend blocks submission of
+    # missing vol.Required fields before the config flow can return per-field
+    # errors. We validate these values ourselves below instead.
     if include_name:
-        fields[vol.Required(CONF_NAME)] = TextSelector()
+        fields[vol.Optional(CONF_NAME)] = TextSelector()
 
     fields.update(
         {
-            vol.Required(CONF_OUTSIDE_ILLUMINANCE): _illuminance_selector(),
-            vol.Required(CONF_SUN_ENTITY): _sun_selector(),
-            vol.Required(CONF_FLOOR_AREA): _number_selector(
+            vol.Optional(CONF_OUTSIDE_ILLUMINANCE): _illuminance_selector(),
+            vol.Optional(CONF_SUN_ENTITY): _sun_selector(),
+            vol.Optional(CONF_FLOOR_AREA): _number_selector(
                 step=0.1,
-                minimum=0.1,
                 unit="m²",
             ),
-            vol.Required(CONF_WINDOW_COUNT, default=1): _window_count_selector(),
+            vol.Optional(CONF_WINDOW_COUNT, default=1): _window_count_selector(),
             vol.Optional(CONF_SHOW_ADVANCED, default=False): BooleanSelector(),
         }
     )
@@ -147,62 +152,51 @@ def _room_schema(*, include_name: bool) -> vol.Schema:
 def _window_schema(*, advanced: bool) -> vol.Schema:
     """Build the form schema for one exterior opening."""
     fields: dict[Any, Any] = {
-        vol.Required(CONF_WIDTH): _number_selector(
-            step=0.01,
-            minimum=0.01,
-            unit="m",
-        ),
-        vol.Required(CONF_HEIGHT): _number_selector(
-            step=0.01,
-            minimum=0.01,
-            unit="m",
-        ),
-        vol.Required(CONF_AZIMUTH): _number_selector(
-            step=1,
-            minimum=0,
-            maximum=359,
-            unit="°",
-        ),
+        vol.Optional(CONF_WIDTH): _number_selector(step=0.01, unit="m"),
+        vol.Optional(CONF_HEIGHT): _number_selector(step=0.01, unit="m"),
+        vol.Optional(CONF_AZIMUTH): _number_selector(step=1, unit="°"),
         vol.Optional(CONF_COVER_ENTITY): _covering_selector(),
     }
     if advanced:
         fields[
-            vol.Required(
+            vol.Optional(
                 CONF_TRANSMISSION,
-                default=DEFAULT_WINDOW_TRANSMISSION,
+                description={"suggested_value": DEFAULT_WINDOW_TRANSMISSION},
             )
-        ] = _number_selector(step=0.01, minimum=0, maximum=1)
+        ] = _number_selector(step=0.01)
     return vol.Schema(fields)
 
 
 def _advanced_schema() -> vol.Schema:
     """Build the advanced model-settings form schema."""
+    # Suggested values keep the recommended defaults visible while still
+    # allowing our validator to report a cleared or invalid field directly.
     return vol.Schema(
         {
-            vol.Required(
+            vol.Optional(
                 CONF_CALIBRATION,
-                default=DEFAULT_CALIBRATION,
-            ): _number_selector(step=0.01, minimum=0.01, maximum=10),
-            vol.Required(
+                description={"suggested_value": DEFAULT_CALIBRATION},
+            ): _number_selector(step=0.01),
+            vol.Optional(
                 CONF_DAYLIGHT_GAIN,
-                default=DEFAULT_DAYLIGHT_GAIN,
-            ): _number_selector(step=0.001, minimum=0.001, maximum=2),
-            vol.Required(
+                description={"suggested_value": DEFAULT_DAYLIGHT_GAIN},
+            ): _number_selector(step=0.001),
+            vol.Optional(
                 CONF_DIFFUSE_BASE,
-                default=DEFAULT_DIFFUSE_BASE,
-            ): _number_selector(step=0.01, minimum=0, maximum=1),
-            vol.Required(
+                description={"suggested_value": DEFAULT_DIFFUSE_BASE},
+            ): _number_selector(step=0.01),
+            vol.Optional(
                 CONF_SENSOR_BLEND,
-                default=DEFAULT_SENSOR_BLEND,
-            ): _number_selector(step=0.01, minimum=0, maximum=1),
-            vol.Required(
+                description={"suggested_value": DEFAULT_SENSOR_BLEND},
+            ): _number_selector(step=0.01),
+            vol.Optional(
                 CONF_SENSOR_MIN_RATIO,
-                default=DEFAULT_SENSOR_MIN_RATIO,
-            ): _number_selector(step=0.05, minimum=0, maximum=10),
-            vol.Required(
+                description={"suggested_value": DEFAULT_SENSOR_MIN_RATIO},
+            ): _number_selector(step=0.05),
+            vol.Optional(
                 CONF_SENSOR_MAX_RATIO,
-                default=DEFAULT_SENSOR_MAX_RATIO,
-            ): _number_selector(step=0.05, minimum=0, maximum=10),
+                description={"suggested_value": DEFAULT_SENSOR_MAX_RATIO},
+            ): _number_selector(step=0.05),
         }
     )
 
