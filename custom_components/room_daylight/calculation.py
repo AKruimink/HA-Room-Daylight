@@ -15,6 +15,7 @@ from typing import Any
 from .const import (
     CONF_AZIMUTH,
     CONF_HEIGHT,
+    CONF_TRANSMISSION,
     CONF_WIDTH,
     DEFAULT_DAYLIGHT_GAIN,
     DEFAULT_DIFFUSE_BASE,

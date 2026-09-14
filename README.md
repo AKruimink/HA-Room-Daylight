@@ -97,7 +97,20 @@ Window azimuth uses normal compass bearings:
 
 A window can also be linked to a `cover`, `binary_sensor` or `input_boolean`. When the linked entity indicates that the window is covered, that window is excluded from the daylight calculation.
 
-Use **Configure / Options** to change optional indoor sensors and artificial lights. Use **Reconfigure** to change the outdoor source, Sun entity, floor area or windows.
+### Advanced model settings
+
+The setup and reconfigure forms include **Configure advanced model settings**. Leave it off for the recommended defaults. When enabled, Room Daylight also exposes:
+
+- room calibration;
+- daylight gain;
+- diffuse daylight contribution;
+- indoor sensor blend;
+- minimum and maximum indoor-sensor correction ratios; and
+- per-window light transmission.
+
+Advanced values are stored with the room, including the defaults. This keeps an existing room's behaviour stable if recommended defaults change in a later release.
+
+Use **Configure / Options** to change optional indoor sensors and artificial lights. Use **Reconfigure** to change the outdoor source, Sun entity, floor area, windows or advanced model settings.
 
 ## Example automation
 

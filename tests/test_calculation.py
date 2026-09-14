@@ -119,6 +119,40 @@ class DaylightCalculationTests(unittest.TestCase):
         self.assertLess(fused.sensor_adjustment_pct, 0)
         self.assertLess(fused.final_lux, base.final_lux)
 
+    def test_sensor_blend_can_be_disabled(self):
+        base = self.estimate()
+        fused = self.estimate(
+            indoor_lux_values=[100_000],
+            sensor_blend=0.0,
+        )
+
+        self.assertAlmostEqual(fused.final_lux, base.final_lux)
+        self.assertAlmostEqual(fused.sensor_adjustment_lux, 0.0)
+
+    def test_window_transmission_changes_window_contribution(self):
+        normal = self.estimate(
+            windows=[{**DEFAULT_WINDOW, "transmission": 0.65}]
+        )
+        low_transmission = self.estimate(
+            windows=[{**DEFAULT_WINDOW, "transmission": 0.20}]
+        )
+
+        self.assertGreater(normal.base_lux, low_transmission.base_lux)
+        self.assertAlmostEqual(
+            low_transmission.window_diagnostics[0].transmission,
+            0.20,
+        )
+
+    def test_advanced_model_parameters_change_result(self):
+        default = self.estimate()
+        calibrated = self.estimate(
+            calibration=1.20,
+            daylight_gain=0.20,
+            diffuse_base=0.50,
+        )
+
+        self.assertGreater(calibrated.base_lux, default.base_lux)
+
 
 if __name__ == "__main__":
     unittest.main()
