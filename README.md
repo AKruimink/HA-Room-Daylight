@@ -139,6 +139,31 @@ Room Daylight is intended to provide a stable automation-oriented estimate of us
 
 The model is deliberately designed to be predictable, explainable and resistant to noisy local lux sensors.
 
+## Diagnostics
+
+Room Daylight exposes detailed calculation diagnostics on each estimated daylight entity so the result can be audited rather than treated as a black box. Diagnostics include:
+
+- outdoor illuminance and current Sun position;
+- the native/base room estimate before indoor sensor correction;
+- the effective indoor/outdoor daylight ratio;
+- each window's area, transmission, orientation factor and lux contribution;
+- individual indoor lux sensor readings, median, minimum, maximum and spread;
+- the bounded indoor estimate used by the model;
+- the resulting indoor-sensor adjustment in lux and percent; and
+- the model parameters currently being used.
+
+Four additional diagnostic entities are created for each room but are disabled by default to avoid clutter:
+
+- **Native Daylight**
+- **Indoor Sensor Median**
+- **Indoor Sensor Adjustment**
+- **Effective Daylight Ratio**
+
+They can be enabled from the room's entity list when you want to graph or monitor individual parts of the calculation.
+
+The effective daylight ratio is an automation-oriented diagnostic showing the modelled native indoor daylight as a percentage of the current outdoor illuminance. It should not be interpreted as a formal architectural daylight-factor calculation.
+
+
 ## Development
 
 Repository validation runs through GitHub Actions using both Hassfest and HACS validation. The pure daylight calculation also has unit tests under `tests/`.
