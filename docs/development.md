@@ -58,3 +58,9 @@ Prefer explicit intermediate values over compact formulas when that makes the mo
 ## Home Assistant conventions
 
 Follow current Home Assistant patterns for config entries, selectors and entities. Hassfest and HACS validation run on pull requests and are the final check for integration-specific conventions.
+
+## Model parameters
+
+Advanced tuning values are persisted in `ConfigEntry.data`; do not read model defaults directly from `sensor.py`. Existing entries are migrated so their effective defaults become explicit configuration. Per-window transmission is stored with each window.
+
+Config-flow validation is intentionally duplicated at two layers: selectors define frontend ranges, while flow validation returns field-specific errors for submitted or restored values. Keep both when adding new numeric fields.

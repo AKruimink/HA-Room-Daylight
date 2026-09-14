@@ -33,20 +33,27 @@ from .calculation import DaylightEstimate, estimate_room_daylight
 from .const import (
     CONF_ARTIFICIAL_LIGHTS,
     CONF_AZIMUTH,
+    CONF_CALIBRATION,
     CONF_COVER_ENTITY,
+    CONF_DAYLIGHT_GAIN,
+    CONF_DIFFUSE_BASE,
     CONF_FLOOR_AREA,
     CONF_HEIGHT,
     CONF_INDOOR_ILLUMINANCE,
     CONF_OUTSIDE_ILLUMINANCE,
+    CONF_SENSOR_BLEND,
+    CONF_SENSOR_MAX_RATIO,
+    CONF_SENSOR_MIN_RATIO,
     CONF_SUN_ENTITY,
+    CONF_TRANSMISSION,
     CONF_WIDTH,
     CONF_WINDOWS,
+    DEFAULT_CALIBRATION,
     DEFAULT_DAYLIGHT_GAIN,
     DEFAULT_DIFFUSE_BASE,
     DEFAULT_SENSOR_BLEND,
     DEFAULT_SENSOR_MAX_RATIO,
     DEFAULT_SENSOR_MIN_RATIO,
-    DEFAULT_WINDOW_TRANSMISSION,
     DOMAIN,
 )
 
@@ -197,8 +204,8 @@ def _runtime_windows(
             CONF_AZIMUTH: configured[CONF_AZIMUTH],
             "covered": covered,
         }
-        if "transmission" in configured:
-            window["transmission"] = configured["transmission"]
+        if CONF_TRANSMISSION in configured:
+            window[CONF_TRANSMISSION] = configured[CONF_TRANSMISSION]
         windows.append(window)
 
     return windows, covered_entities
@@ -267,17 +274,29 @@ def _window_diagnostics(
     ]
 
 
-def _model_parameters() -> dict[str, float]:
-    """Return the model defaults used by the current integration version."""
+def _model_parameters(entry: ConfigEntry) -> dict[str, float]:
+    """Return the model parameters configured for this room."""
     return {
-        "calibration": 1.0,
-        "daylight_gain": DEFAULT_DAYLIGHT_GAIN,
-        "diffuse_base": DEFAULT_DIFFUSE_BASE,
-        "window_transmission": DEFAULT_WINDOW_TRANSMISSION,
-        "sensor_blend": DEFAULT_SENSOR_BLEND,
-        "sensor_min_ratio": DEFAULT_SENSOR_MIN_RATIO,
-        "sensor_max_ratio": DEFAULT_SENSOR_MAX_RATIO,
+        "calibration": float(
+            entry.data.get(CONF_CALIBRATION, DEFAULT_CALIBRATION)
+        ),
+        "daylight_gain": float(
+            entry.data.get(CONF_DAYLIGHT_GAIN, DEFAULT_DAYLIGHT_GAIN)
+        ),
+        "diffuse_base": float(
+            entry.data.get(CONF_DIFFUSE_BASE, DEFAULT_DIFFUSE_BASE)
+        ),
+        "sensor_blend": float(
+            entry.data.get(CONF_SENSOR_BLEND, DEFAULT_SENSOR_BLEND)
+        ),
+        "sensor_min_ratio": float(
+            entry.data.get(CONF_SENSOR_MIN_RATIO, DEFAULT_SENSOR_MIN_RATIO)
+        ),
+        "sensor_max_ratio": float(
+            entry.data.get(CONF_SENSOR_MAX_RATIO, DEFAULT_SENSOR_MAX_RATIO)
+        ),
     }
+
 
 
 class RoomDaylightSensor(SensorEntity):
@@ -371,6 +390,7 @@ class RoomDaylightSensor(SensorEntity):
             suppressed=indoor_sensors_suppressed,
         )
 
+        model_parameters = _model_parameters(self._entry)
         estimate = estimate_room_daylight(
             outside_lux=outside_lux,
             sun_azimuth=sun_azimuth,
@@ -378,6 +398,7 @@ class RoomDaylightSensor(SensorEntity):
             floor_area=float(self._entry.data[CONF_FLOOR_AREA]),
             windows=windows,
             indoor_lux_values=indoor_values,
+            **model_parameters,
         )
         self._estimate = estimate
         self._diagnostics = {
@@ -422,8 +443,8 @@ class RoomDaylightSensor(SensorEntity):
                 configured_windows,
                 estimate,
             ),
-            "model_parameters": _model_parameters(),
-            "model_version": 2,
+            "model_parameters": model_parameters,
+            "model_version": 3,
             "source_available": True,
         }
 

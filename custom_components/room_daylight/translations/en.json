@@ -12,6 +12,7 @@
           "sun_entity": "Sun entity",
           "floor_area": "Floor area",
           "window_count": "Number of windows / glazed openings",
+          "show_advanced": "Configure advanced model settings",
           "indoor_illuminance": "Optional indoor illuminance sensors",
           "artificial_lights": "Artificial lights affecting indoor sensors"
         },
@@ -21,24 +22,27 @@
           "sun_entity": "A Home Assistant Sun entity that exposes the current solar azimuth and elevation. The standard Sun integration normally provides sun.sun.",
           "floor_area": "The approximate internal floor area of the room in square metres. Length × width is usually sufficient; exact architectural precision is not required.",
           "window_count": "How many separate external windows, glazed doors, or other glazed openings contribute daylight to this room.",
+          "show_advanced": "Adds advanced tuning fields during setup. Leave this off unless you want to override Room Daylight's recommended model defaults.",
           "indoor_illuminance": "Optional illuminance sensors inside the room. Their readings only provide a bounded correction to the calculated estimate, so local bright or dark spots cannot dominate it.",
           "artificial_lights": "Select lights that materially affect the chosen indoor illuminance sensors. Indoor sensor correction is ignored whenever any selected light is on."
         }
       },
       "reconfigure": {
         "title": "Reconfigure room daylight",
-        "description": "Update the daylight source, Sun entity, room size, or windows. Indoor illuminance sensors and artificial-light exclusions can be changed from Configure / Options.",
+        "description": "Update the daylight source, Sun entity, room size, windows, or advanced model settings. Indoor illuminance sensors and artificial-light exclusions can be changed from Configure / Options.",
         "data": {
           "outside_illuminance": "Outdoor illuminance sensor",
           "sun_entity": "Sun entity",
           "floor_area": "Floor area",
-          "window_count": "Number of windows / glazed openings"
+          "window_count": "Number of windows / glazed openings",
+          "show_advanced": "Configure advanced model settings"
         },
         "data_description": {
           "outside_illuminance": "A sensor with the Illuminance device class that represents the current outdoor light level in lux.",
           "sun_entity": "A Home Assistant Sun entity exposing solar azimuth and elevation.",
           "floor_area": "Approximate internal floor area in square metres.",
-          "window_count": "Changing this value lets you add or remove configured windows during the following steps."
+          "window_count": "Changing this value lets you add or remove configured windows during the following steps.",
+          "show_advanced": "Open the advanced model step and show per-window transmission. Existing advanced values are preserved when this is left off."
         }
       },
       "window": {
@@ -48,20 +52,46 @@
           "width": "Glazed width",
           "height": "Glazed height",
           "azimuth": "Outward-facing azimuth",
-          "cover_entity": "Optional blind / curtain entity"
+          "cover_entity": "Optional blind / curtain entity",
+          "transmission": "Window transmission"
         },
         "data_description": {
           "width": "Approximate width of the glazed opening in metres. For French or patio doors, measure the complete glazed doorway.",
           "height": "Approximate height of the glazed opening in metres.",
           "azimuth": "Compass bearing in degrees for the direction this window faces outwards. North = 0°, East = 90°, South = 180°, West = 270°.",
-          "cover_entity": "Optional cover, binary sensor, or input boolean representing whether this opening is covered. A fully closed cover, or an on binary/input boolean, excludes this window from the calculation."
+          "cover_entity": "Optional cover, binary sensor, or input boolean representing whether this opening is covered. A fully closed cover, or an on binary/input boolean, excludes this window from the calculation.",
+          "transmission": "Fraction of exterior daylight retained after glazing and frame losses. 1.00 means no loss; the recommended default is 0.65."
+        }
+      },
+      "advanced": {
+        "title": "Advanced daylight model",
+        "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
+        "data": {
+          "calibration": "Room calibration",
+          "daylight_gain": "Daylight gain",
+          "diffuse_base": "Diffuse daylight factor",
+          "sensor_blend": "Indoor sensor blend",
+          "sensor_min_ratio": "Minimum sensor correction ratio",
+          "sensor_max_ratio": "Maximum sensor correction ratio"
+        },
+        "data_description": {
+          "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",
+          "daylight_gain": "Controls how strongly effective window area contributes to indoor daylight. The recommended default is 0.15.",
+          "diffuse_base": "Minimum orientation contribution from a window when it is not facing the sun. 0 disables diffuse contribution; 1 treats orientation as irrelevant. The recommended default is 0.35.",
+          "sensor_blend": "How strongly optional indoor lux sensors influence the final estimate. 0 ignores them; 1 uses the bounded indoor reading entirely. The recommended default is 0.25.",
+          "sensor_min_ratio": "Lowest indoor-sensor value allowed relative to the physical model before blending. 0.50 means a low sensor reading cannot be treated as less than half of the model estimate.",
+          "sensor_max_ratio": "Highest indoor-sensor value allowed relative to the physical model before blending. 2.00 means a high sensor reading cannot be treated as more than twice the model estimate."
         }
       }
     },
     "error": {
       "required": "This field is required.",
       "positive_number": "Enter a number greater than zero.",
-      "azimuth_range": "Enter an azimuth from 0° up to, but not including, 360°."
+      "window_count_range": "Enter between 1 and 20 windows.",
+      "azimuth_range": "Enter an azimuth from 0° up to, but not including, 360°.",
+      "zero_to_one": "Enter a value from 0 to 1.",
+      "advanced_range": "Enter a value within the allowed range for this field.",
+      "sensor_ratio_order": "Maximum sensor correction must be greater than or equal to the minimum correction."
     },
     "abort": {
       "already_configured": "A room with this name is already configured.",

@@ -13,7 +13,8 @@
           "floor_area": "Vloeroppervlak",
           "window_count": "Aantal ramen / glasopeningen",
           "indoor_illuminance": "Optionele verlichtingssensoren binnen",
-          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt"
+          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt",
+          "show_advanced": "Configure advanced model settings"
         },
         "data_description": {
           "name": "Een herkenbare naam voor deze ruimte, bijvoorbeeld Woonkamer of Keuken.",
@@ -22,7 +23,8 @@
           "floor_area": "Het geschatte interne vloeroppervlak van de ruimte in vierkante meter. Lengte × breedte is meestal voldoende.",
           "window_count": "Het aantal afzonderlijke externe ramen, glazen deuren of andere glasopeningen dat daglicht aan deze ruimte levert.",
           "indoor_illuminance": "Optionele verlichtingssensoren in de ruimte. Hun metingen corrigeren het model slechts beperkt, zodat lokale lichte of donkere plekken niet kunnen domineren.",
-          "artificial_lights": "Selecteer lampen die de gekozen binnensensoren merkbaar beïnvloeden. De correctie met binnensensoren wordt genegeerd zolang een geselecteerde lamp aan staat."
+          "artificial_lights": "Selecteer lampen die de gekozen binnensensoren merkbaar beïnvloeden. De correctie met binnensensoren wordt genegeerd zolang een geselecteerde lamp aan staat.",
+          "show_advanced": "Adds advanced tuning fields during setup. Leave this off unless you want to override Room Daylight's recommended model defaults."
         }
       },
       "reconfigure": {
@@ -32,13 +34,15 @@
           "outside_illuminance": "Buitenverlichtingssensor",
           "sun_entity": "Zonentiteit",
           "floor_area": "Vloeroppervlak",
-          "window_count": "Aantal ramen / glasopeningen"
+          "window_count": "Aantal ramen / glasopeningen",
+          "show_advanced": "Configure advanced model settings"
         },
         "data_description": {
           "outside_illuminance": "Een sensor met apparaatklasse Verlichtingssterkte die het actuele buitenlicht in lux weergeeft.",
           "sun_entity": "Een Home Assistant-zonentiteit met zonne-azimut en -hoogte.",
           "floor_area": "Geschat intern vloeroppervlak in vierkante meter.",
-          "window_count": "Wijzig dit aantal om in de volgende stappen ramen toe te voegen of te verwijderen."
+          "window_count": "Wijzig dit aantal om in de volgende stappen ramen toe te voegen of te verwijderen.",
+          "show_advanced": "Open the advanced model step and show per-window transmission. Existing advanced values are preserved when this is left off."
         }
       },
       "window": {
@@ -48,20 +52,46 @@
           "width": "Glasbreedte",
           "height": "Glashoogte",
           "azimuth": "Naar buiten gerichte azimut",
-          "cover_entity": "Optionele jaloezie-/gordijnentiteit"
+          "cover_entity": "Optionele jaloezie-/gordijnentiteit",
+          "transmission": "Window transmission"
         },
         "data_description": {
           "width": "Geschatte breedte van de glasopening in meter. Meet bij Franse of schuifdeuren de volledige glazen deuropening.",
           "height": "Geschatte hoogte van de glasopening in meter.",
           "azimuth": "Kompasrichting in graden waarin dit raam naar buiten kijkt. Noord = 0°, Oost = 90°, Zuid = 180°, West = 270°.",
-          "cover_entity": "Optionele cover, binaire sensor of input boolean die aangeeft of de opening bedekt is. Een volledig gesloten cover of ingeschakelde binaire/input boolean sluit dit raam uit."
+          "cover_entity": "Optionele cover, binaire sensor of input boolean die aangeeft of de opening bedekt is. Een volledig gesloten cover of ingeschakelde binaire/input boolean sluit dit raam uit.",
+          "transmission": "Fraction of exterior daylight retained after glazing and frame losses. 1.00 means no loss; the recommended default is 0.65."
+        }
+      },
+      "advanced": {
+        "title": "Advanced daylight model",
+        "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
+        "data": {
+          "calibration": "Room calibration",
+          "daylight_gain": "Daylight gain",
+          "diffuse_base": "Diffuse daylight factor",
+          "sensor_blend": "Indoor sensor blend",
+          "sensor_min_ratio": "Minimum sensor correction ratio",
+          "sensor_max_ratio": "Maximum sensor correction ratio"
+        },
+        "data_description": {
+          "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",
+          "daylight_gain": "Controls how strongly effective window area contributes to indoor daylight. The recommended default is 0.15.",
+          "diffuse_base": "Minimum orientation contribution from a window when it is not facing the sun. 0 disables diffuse contribution; 1 treats orientation as irrelevant. The recommended default is 0.35.",
+          "sensor_blend": "How strongly optional indoor lux sensors influence the final estimate. 0 ignores them; 1 uses the bounded indoor reading entirely. The recommended default is 0.25.",
+          "sensor_min_ratio": "Lowest indoor-sensor value allowed relative to the physical model before blending. 0.50 means a low sensor reading cannot be treated as less than half of the model estimate.",
+          "sensor_max_ratio": "Highest indoor-sensor value allowed relative to the physical model before blending. 2.00 means a high sensor reading cannot be treated as more than twice the model estimate."
         }
       }
     },
     "error": {
       "required": "Dit veld is verplicht.",
       "positive_number": "Voer een getal groter dan nul in.",
-      "azimuth_range": "Voer een azimut in van 0° tot, maar niet inclusief, 360°."
+      "azimuth_range": "Voer een azimut in van 0° tot, maar niet inclusief, 360°.",
+      "window_count_range": "Enter between 1 and 20 windows.",
+      "zero_to_one": "Enter a value from 0 to 1.",
+      "advanced_range": "Enter a value within the allowed range for this field.",
+      "sensor_ratio_order": "Maximum sensor correction must be greater than or equal to the minimum correction."
     },
     "abort": {
       "already_configured": "Een ruimte met deze naam is al geconfigureerd.",
