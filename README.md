@@ -1,92 +1,57 @@
+<p align="center">
+  <img src="images/icon.png" alt="Room Daylight" width="128">
+</p>
+
 # Room Daylight
 
-![Room Daylight icon](images/icon.png)
+Room Daylight estimates how much natural daylight is available in each room of a Home Assistant home.
 
-Room Daylight is a Home Assistant custom integration that estimates the amount of natural daylight available inside individual rooms.
+Indoor lux sensors are useful, but their readings can vary heavily with placement, direct sun, furniture and artificial lighting. Fixed sun-elevation rules have the opposite problem: they know where the sun is, but not how bright it actually is outside.
 
-Instead of relying on one indoor illuminance sensor, whose reading can vary significantly with placement, direct sunlight, furniture and artificial lighting, Room Daylight combines an outdoor illuminance reading with room and window information to create a stable estimated daylight sensor in lux.
+Room Daylight combines both ideas. It starts with an outdoor illuminance reading, then adjusts it for the room and its windows. Optional indoor lux sensors can gently correct the result without becoming the source of truth.
 
-Each configured room creates its own illuminance sensor for use in automations, dashboards, scripts and templates.
+Each configured room creates an illuminance sensor such as:
 
-## Features
+```text
+sensor.living_room_estimated_daylight
+```
 
-- Configure any number of rooms through the Home Assistant UI.
-- Each room is a normal integration config entry with its own illuminance entity.
-- Reconfigure room geometry and source entities without deleting the room.
-- Change optional indoor sensors and artificial-light exclusions from Configure / Options.
-- Use any existing outdoor illuminance sensor as the daylight source.
-- Account for current sun azimuth and elevation from a user-selected Sun entity.
-- Configure multiple windows with dimensions and orientation.
-- Exclude windows when linked blinds or curtains are closed.
-- Optionally use existing indoor lux sensors as bounded supporting inputs.
-- Ignore indoor lux readings while selected artificial lights are on.
-- Expose useful calculation diagnostics as sensor attributes.
-- No YAML configuration required.
+Use that sensor anywhere you would use a normal lux sensor: automations, dashboards, scripts or templates.
 
-## How it works
+## What it uses
 
-Room Daylight uses:
+A room is calculated from:
 
-- outdoor illuminance;
-- current sun position;
+- an outdoor illuminance sensor;
+- a Home Assistant Sun entity;
 - room floor area;
-- window dimensions;
+- window or glazed-door dimensions;
 - window orientation;
-- optional window coverings;
+- optional blinds or curtains;
 - optional indoor illuminance sensors; and
-- optional artificial-light entities.
+- optional artificial lights that invalidate indoor sensor readings.
 
-The outdoor illuminance value is treated as the source of truth for current outdoor brightness. Room Daylight therefore does not perform its own cloud or weather calculation.
+The outdoor illuminance source should already reflect current conditions. Room Daylight does not perform its own cloud or weather calculation.
 
-This keeps the integration independent of the source of the outdoor value. You can start with an estimated outdoor illuminance integration and later replace it with a physical outdoor lux sensor or weather station without changing the room model.
+If you do not have a physical outdoor lux sensor, [Illuminance](https://github.com/pnbruckner/ha-illuminance) is a good companion integration.
 
-Indoor lux sensors are optional. When present, their readings are used as a bounded correction to the calculated estimate rather than replacing the model outright. This reduces the effect of badly placed sensors, dark corners and direct sun patches.
+## How the estimate works
 
-## Recommended companion integrations and sensors
+1. Each uncovered window contributes daylight based on its size and direction relative to the sun.
+2. Those contributions are combined with the outdoor illuminance and room floor area to produce the base room estimate.
+3. If indoor lux sensors are configured, their median reading is bounded to a sensible range around the model.
+4. That bounded reading is blended conservatively into the final estimate.
+5. Indoor sensor correction is disabled while any configured artificial light is on.
 
-### Illuminance
-
-[Illuminance](https://github.com/pnbruckner/ha-illuminance) is a useful companion integration if you do not have a physical outdoor illuminance sensor. It estimates outdoor illuminance from the sun position and can incorporate weather or cloud information.
-
-Room Daylight can then use that resulting lux sensor as its outdoor source.
-
-### Physical outdoor illuminance sensors
-
-Any Home Assistant sensor providing illuminance in lux can be used, including compatible ESPHome, Zigbee or Z-Wave light sensors and weather stations.
-
-### Indoor illuminance sensors
-
-Lux readings exposed by motion sensors, presence sensors, plant sensors or dedicated light sensors can optionally reinforce the model. They are never required.
-
-### Blinds and curtains
-
-A Home Assistant `cover`, `binary_sensor` or `input_boolean` can be linked to a window. A covered window is removed from the daylight contribution.
-
-## Example automation
-
-Once a room has been configured, Home Assistant exposes an illuminance entity such as:
-
-```text
-sensor.lounge_estimated_daylight
-```
-
-A lighting automation can then simply use a condition such as:
-
-```text
-Motion detected
-AND
-Lounge Estimated Daylight < 120 lx
-THEN
-Turn on lounge lights
-```
+The result is intended for home automation, not as a replacement for a professional daylight simulation.
 
 ## Installation
 
 ### HACS
 
 1. Open HACS.
-2. Add this GitHub repository as a custom repository of type **Integration**.
-3. Download **Room Daylight**.
+2. Add this repository as a custom repository of type **Integration**.
+3. Install **Room Daylight**.
 4. Restart Home Assistant.
 5. Go to **Settings → Devices & services → Add integration**.
 6. Search for **Room Daylight**.
@@ -105,26 +70,23 @@ to:
 <config>/custom_components/room_daylight
 ```
 
-Then restart Home Assistant.
+Restart Home Assistant, then add **Room Daylight** from **Settings → Devices & services**.
 
-## Configuration
+## Setting up a room
 
 Each Room Daylight config entry represents one room.
 
-The setup flow asks for:
+You will be asked for:
 
-1. room name;
-2. an outdoor illuminance entity (filtered to illuminance sensors);
-3. a Sun entity providing azimuth and elevation;
-4. room floor area;
-5. the number of external glazed openings;
-6. optional indoor illuminance sensors;
-7. optional artificial lights that invalidate indoor lux readings; and
-8. each window or glazed door, including width, height, outward-facing azimuth and optional covering entity.
+- **Room name** — for example, `Living Room`.
+- **Outdoor illuminance** — a sensor reporting current outdoor light in lux.
+- **Sun entity** — normally `sun.sun`.
+- **Floor area** — approximate internal floor area in square metres.
+- **Windows / glazed doors** — width, height and outward-facing azimuth.
+- **Indoor lux sensors** — optional supporting measurements from the room.
+- **Artificial lights** — optional lights that make indoor lux readings unsuitable for daylight correction while on.
 
-After setup, use **Configure / Options** to change the optional indoor sensors and lights. Use **Reconfigure** from the config-entry menu to change the outdoor source, Sun entity, room area, or windows.
-
-Window azimuth follows the standard compass convention:
+Window azimuth uses normal compass bearings:
 
 | Direction | Azimuth |
 | --- | ---: |
@@ -133,46 +95,56 @@ Window azimuth follows the standard compass convention:
 | South | 180° |
 | West | 270° |
 
-## Accuracy
+A window can also be linked to a `cover`, `binary_sensor` or `input_boolean`. When the linked entity indicates that the window is covered, that window is excluded from the daylight calculation.
 
-Room Daylight is intended to provide a stable automation-oriented estimate of usable room daylight. It is not a photometrically accurate building-lighting simulation.
+Use **Configure / Options** to change optional indoor sensors and artificial lights. Use **Reconfigure** to change the outdoor source, Sun entity, floor area or windows.
 
-The model is deliberately designed to be predictable, explainable and resistant to noisy local lux sensors.
+## Example automation
+
+A typical lighting automation can simply check the room estimate:
+
+```text
+Motion detected
+AND
+Living Room Estimated Daylight < 120 lx
+THEN
+Turn on the living-room lights
+```
+
+The useful threshold depends on the room and what you do there. A hallway may be comfortable at a much lower value than a kitchen or office.
 
 ## Diagnostics
 
-Room Daylight exposes detailed calculation diagnostics on each estimated daylight entity so the result can be audited rather than treated as a black box. Diagnostics include:
+The main estimated-daylight entity exposes calculation details including:
 
-- outdoor illuminance and current Sun position;
-- the native/base room estimate before indoor sensor correction;
-- the effective indoor/outdoor daylight ratio;
-- each window's area, transmission, orientation factor and lux contribution;
-- individual indoor lux sensor readings, median, minimum, maximum and spread;
-- the bounded indoor estimate used by the model;
-- the resulting indoor-sensor adjustment in lux and percent; and
-- the model parameters currently being used.
+- outdoor illuminance and sun position;
+- base and final estimates;
+- effective indoor/outdoor daylight ratio;
+- contribution from each window;
+- individual indoor sensor readings and their median;
+- indoor sensor adjustment; and
+- the model parameters currently in use.
 
-Four additional diagnostic entities are created for each room but are disabled by default to avoid clutter:
+Additional diagnostic entities are created but disabled by default:
 
 - **Native Daylight**
 - **Indoor Sensor Median**
 - **Indoor Sensor Adjustment**
 - **Effective Daylight Ratio**
 
-They can be enabled from the room's entity list when you want to graph or monitor individual parts of the calculation.
+Enable them from the entity registry if you want to graph or monitor individual parts of the model.
 
-The effective daylight ratio is an automation-oriented diagnostic showing the modelled native indoor daylight as a percentage of the current outdoor illuminance. It should not be interpreted as a formal architectural daylight-factor calculation.
+The effective daylight ratio is a practical diagnostic for this integration. It is not a formal architectural daylight-factor calculation.
 
+## Accuracy
+
+Room Daylight is deliberately a practical model. Real indoor daylight also depends on room depth, glazing type, external obstructions, surface reflectance and many other details that are not currently modelled.
+
+The goal is a stable, explainable value that is useful for automations and behaves more consistently than a single badly placed lux sensor or a fixed sun-elevation threshold.
 
 ## Development
 
-Repository validation runs through GitHub Actions using both Hassfest and HACS validation. The pure daylight calculation also has unit tests under `tests/`.
-
-The integration includes local Home Assistant branding assets under `custom_components/room_daylight/brand/` so the icon can be used in Home Assistant and by HACS.
-
-## Contributing
-
-Bug reports, feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting code changes.
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository workflow, coding guidelines and test commands.
 
 ## Licence
 
