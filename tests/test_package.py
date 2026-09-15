@@ -52,7 +52,7 @@ def test_manifest_declares_expected_integration_shape() -> None:
     manifest = _json(INTEGRATION / "manifest.json")
 
     assert manifest["domain"] == "room_daylight"
-    assert manifest["integration_type"] == "helper"
+    assert manifest["integration_type"] == "service"
     assert manifest["config_flow"] is True
     assert manifest["single_config_entry"] is True
     assert manifest["iot_class"] == "calculated"

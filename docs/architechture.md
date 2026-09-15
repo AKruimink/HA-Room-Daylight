@@ -16,7 +16,7 @@ Room Daylight ConfigEntry
 └── Connection ConfigSubentry
 ```
 
-`room` and `connection` are separate config-subentry types.
+`room` and `connection` are separate config-subentry types. The manifest classifies Room Daylight as a `service` integration so Home Assistant manages it under **Settings -> Devices & services -> Integrations**, rather than placing its setup flow in the Helpers UI.
 
 A room or connection is identified internally by its stable `subentry_id`. User-facing names are labels only; renaming an object must not change entity unique IDs or connection references.
 
@@ -220,7 +220,7 @@ Whole-network recomputation is intentional. Typical homes have a small graph, an
 
 ## 10. Entity identity and ownership
 
-Each room owns one Home Assistant helper device and its room sensors. Entities are added with that room's `config_subentry_id`.
+Each room owns one Home Assistant device and its room sensors. Entities are added with that room's `config_subentry_id`.
 
 Unique IDs are based on:
 
