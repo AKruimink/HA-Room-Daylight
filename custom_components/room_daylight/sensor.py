@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfIlluminance
+from homeassistant.const import EntityCategory, LIGHT_LUX, UnitOfRatio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
@@ -41,7 +41,7 @@ LUX_DESCRIPTIONS: tuple[RoomDaylightSensorDescription, ...] = (
         value_key="estimated_lux",
         translation_key="estimated_daylight",
         device_class=SensorDeviceClass.ILLUMINANCE,
-        native_unit_of_measurement=UnitOfIlluminance.LUX,
+        native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     RoomDaylightSensorDescription(
@@ -49,7 +49,7 @@ LUX_DESCRIPTIONS: tuple[RoomDaylightSensorDescription, ...] = (
         value_key="native_lux",
         translation_key="native_daylight",
         device_class=SensorDeviceClass.ILLUMINANCE,
-        native_unit_of_measurement=UnitOfIlluminance.LUX,
+        native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -59,7 +59,7 @@ LUX_DESCRIPTIONS: tuple[RoomDaylightSensorDescription, ...] = (
         value_key="transferred_lux",
         translation_key="transferred_daylight",
         device_class=SensorDeviceClass.ILLUMINANCE,
-        native_unit_of_measurement=UnitOfIlluminance.LUX,
+        native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -69,7 +69,7 @@ LUX_DESCRIPTIONS: tuple[RoomDaylightSensorDescription, ...] = (
         value_key="sensor_median_lux",
         translation_key="indoor_sensor_median",
         device_class=SensorDeviceClass.ILLUMINANCE,
-        native_unit_of_measurement=UnitOfIlluminance.LUX,
+        native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -78,7 +78,7 @@ LUX_DESCRIPTIONS: tuple[RoomDaylightSensorDescription, ...] = (
         key="indoor_sensor_adjustment",
         value_key="sensor_adjustment_lux",
         translation_key="indoor_sensor_adjustment",
-        native_unit_of_measurement=UnitOfIlluminance.LUX,
+        native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -89,7 +89,7 @@ RATIO_DESCRIPTION = RoomDaylightSensorDescription(
     key="effective_daylight_ratio",
     value_key="effective_daylight_ratio",
     translation_key="effective_daylight_ratio",
-    native_unit_of_measurement=PERCENTAGE,
+    native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
     state_class=SensorStateClass.MEASUREMENT,
     entity_category=EntityCategory.DIAGNOSTIC,
     entity_registry_enabled_default=False,
