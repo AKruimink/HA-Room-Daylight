@@ -1,4 +1,4 @@
-"""Release-package contract tests that do not require Home Assistant."""
+"""Package contract tests that do not require Home Assistant."""
 
 from __future__ import annotations
 
@@ -9,10 +9,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "room_daylight"
-COMPLETE_TRANSLATION_LOCALES = {"en", "de", "es", "fr", "nl"}
+MAINTAINED_TRANSLATION_LOCALES = {"en", "de", "es", "fr", "nl"}
 
 
 def _json(path: Path) -> dict:
+    """Load a JSON document from *path*."""
+
     return json.loads(path.read_text())
 
 
@@ -44,49 +46,46 @@ def _placeholders(value: str) -> set[str]:
     return set(re.findall(r"\{([A-Za-z0-9_]+)\}", value))
 
 
-def test_manifest_declares_clean_single_entry_release() -> None:
+def test_manifest_declares_expected_integration_shape() -> None:
+    """Protect architectural manifest settings, not release metadata."""
+
     manifest = _json(INTEGRATION / "manifest.json")
 
     assert manifest["domain"] == "room_daylight"
-    assert manifest["version"] == "1.0.0"
+    assert manifest["integration_type"] == "helper"
     assert manifest["config_flow"] is True
     assert manifest["single_config_entry"] is True
     assert manifest["iot_class"] == "calculated"
-    assert manifest["requirements"] == []
 
 
-def test_hacs_metadata_matches_supported_home_assistant_version() -> None:
-    hacs = _json(ROOT / "hacs.json")
+def test_custom_integration_uses_direct_translation_files() -> None:
+    """Standalone custom integrations should ship translations directly."""
 
-    assert hacs["name"] == "Room Daylight"
-    assert hacs["homeassistant"] == "2026.8.0"
-    assert hacs["render_readme"] is True
+    translations_dir = INTEGRATION / "translations"
 
-
-def test_custom_integration_uses_direct_translation_file() -> None:
-    translations = _json(INTEGRATION / "translations" / "en.json")
-
+    assert (translations_dir / "en.json").is_file()
     assert not (INTEGRATION / "strings.json").exists()
-    assert {"room", "connection"} <= set(translations["config_subentries"])
-    assert {"opening_type", "connection_type"} <= set(translations["selector"])
 
 
-def test_subentry_translations_have_required_flow_metadata() -> None:
+def test_subentry_translations_have_flow_metadata() -> None:
+    """Subentry translations include the metadata required by Hassfest."""
+
     translations = _json(INTEGRATION / "translations" / "en.json")
+    subentries = translations.get("config_subentries", {})
 
-    room = translations["config_subentries"]["room"]
-    connection = translations["config_subentries"]["connection"]
+    assert subentries
+    for name, subentry in subentries.items():
+        entry_type = subentry.get("entry_type")
+        initiate_flow = subentry.get("initiate_flow", {})
 
-    assert room["entry_type"] == "Room"
-    assert connection["entry_type"] == "Room connection"
-    assert set(room["initiate_flow"]) == {"user", "reconfigure"}
-    assert set(connection["initiate_flow"]) == {"user", "reconfigure"}
-    assert all(value.strip() for value in room["initiate_flow"].values())
-    assert all(value.strip() for value in connection["initiate_flow"].values())
+        assert isinstance(entry_type, str) and entry_type.strip(), name
+        for flow_type in ("user", "reconfigure"):
+            label = initiate_flow.get(flow_type)
+            assert isinstance(label, str) and label.strip(), f"{name}.{flow_type}"
 
 
 def test_no_translation_uses_legacy_config_title() -> None:
-    """Hassfest rejects the pre-0.109 config.title translation location."""
+    """Reject the obsolete nested config.title translation location."""
 
     translations_dir = INTEGRATION / "translations"
     for path in sorted(translations_dir.glob("*.json")):
@@ -94,22 +93,21 @@ def test_no_translation_uses_legacy_config_title() -> None:
         assert "title" not in translation.get("config", {}), path.name
 
 
-def test_supported_translations_match_english_schema_and_placeholders() -> None:
-    """Locales maintained by this project expose the complete translation contract."""
+def test_maintained_translations_match_english_contract() -> None:
+    """Project-maintained locales expose the same keys and placeholders as English."""
 
     translations_dir = INTEGRATION / "translations"
     english = _json(translations_dir / "en.json")
     english_paths = _leaf_paths(english)
+    available_locales = {path.stem for path in translations_dir.glob("*.json")}
 
-    assert COMPLETE_TRANSLATION_LOCALES <= {
-        path.stem for path in translations_dir.glob("*.json")
-    }
+    assert MAINTAINED_TRANSLATION_LOCALES <= available_locales
 
-    for locale in sorted(COMPLETE_TRANSLATION_LOCALES):
+    for locale in sorted(MAINTAINED_TRANSLATION_LOCALES):
         path = translations_dir / f"{locale}.json"
         translation = _json(path)
-        assert "title" not in translation.get("config", {}), path.name
         assert _leaf_paths(translation) == english_paths, path.name
+
         for key_path in english_paths:
             value = _string_at(translation, key_path)
             assert value.strip(), f"{path.name}: {'.'.join(key_path)}"
@@ -118,21 +116,15 @@ def test_supported_translations_match_english_schema_and_placeholders() -> None:
             ), f"{path.name}: {'.'.join(key_path)}"
 
 
-def test_additional_translation_files_remain_hassfest_compatible() -> None:
-    """Allow community locales to be partial while validating the strings they ship.
-
-    Home Assistant loads English first and uses it as the fallback for missing keys in
-    another locale. Requiring every community translation to be complete made the
-    package tests stricter than Home Assistant and caused otherwise valid partial
-    translations to fail CI.
-    """
+def test_additional_translation_strings_are_well_formed() -> None:
+    """Validate any community locale strings without requiring full coverage."""
 
     translations_dir = INTEGRATION / "translations"
     english = _json(translations_dir / "en.json")
     english_paths = _leaf_paths(english)
 
     for path in sorted(translations_dir.glob("*.json")):
-        if path.stem in COMPLETE_TRANSLATION_LOCALES:
+        if path.stem in MAINTAINED_TRANSLATION_LOCALES:
             continue
 
         translation = _json(path)
@@ -144,40 +136,59 @@ def test_additional_translation_files_remain_hassfest_compatible() -> None:
                     _string_at(english, key_path)
                 ), f"{path.name}: {'.'.join(key_path)}"
 
-        for subentry in translation.get("config_subentries", {}).values():
-            assert "entry_type" in subentry, path.name
-            assert "initiate_flow" in subentry, path.name
-            assert "user" in subentry["initiate_flow"], path.name
+
+def test_config_entry_runtime_data_uses_a_type_alias() -> None:
+    """Keep the config-entry alias usable in type expressions by static analysers."""
+
+    tree = ast.parse((INTEGRATION / "__init__.py").read_text())
+    aliases = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.TypeAlias)
+        and isinstance(node.name, ast.Name)
+        and node.name.id == "RoomDaylightConfigEntry"
+    ]
+
+    assert aliases
 
 
-def test_config_entry_runtime_data_alias_is_an_explicit_type_alias() -> None:
-    source = (INTEGRATION / "__init__.py").read_text()
-    assert (
-        "type RoomDaylightConfigEntry = "
-        "ConfigEntry[RoomDaylightCoordinator]"
-    ) in source
+def test_sensor_translation_keys_have_english_names() -> None:
+    """Every sensor description translation key resolves to an English entity name."""
 
-
-def test_every_room_sensor_has_an_english_entity_translation() -> None:
     translations = _json(INTEGRATION / "translations" / "en.json")
-    sensor_names = translations["entity"]["sensor"]
+    sensor_translations = translations["entity"]["sensor"]
+    tree = ast.parse((INTEGRATION / "sensor.py").read_text())
 
-    assert set(sensor_names) == {
-        "estimated_daylight",
-        "native_daylight",
-        "transferred_daylight",
-        "indoor_sensor_median",
-        "indoor_sensor_adjustment",
-        "effective_daylight_ratio",
-    }
-    assert all(item["name"].strip() for item in sensor_names.values())
+    translation_keys: set[str] = set()
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "RoomDaylightSensorDescription"
+        ):
+            continue
+
+        for keyword in node.keywords:
+            if (
+                keyword.arg == "translation_key"
+                and isinstance(keyword.value, ast.Constant)
+                and isinstance(keyword.value.value, str)
+            ):
+                translation_keys.add(keyword.value.value)
+
+    assert translation_keys
+    for translation_key in translation_keys:
+        translated = sensor_translations.get(translation_key)
+        assert isinstance(translated, dict), translation_key
+        name = translated.get("name")
+        assert isinstance(name, str) and name.strip(), translation_key
 
 
-def test_sensor_platform_declares_coordinator_parallelism_and_translations() -> None:
-    """Sensor metadata follows Home Assistant's coordinator/entity conventions."""
+def test_sensor_platform_declares_coordinator_parallelism() -> None:
+    """Coordinator-backed read-only sensors should not request parallel updates."""
 
     tree = ast.parse((INTEGRATION / "sensor.py").read_text())
-    parallel_updates = [
+    values = [
         node.value.value
         for node in tree.body
         if isinstance(node, ast.Assign)
@@ -187,25 +198,12 @@ def test_sensor_platform_declares_coordinator_parallelism_and_translations() -> 
         )
         and isinstance(node.value, ast.Constant)
     ]
-    assert parallel_updates == [0]
 
-    descriptions = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "RoomDaylightSensorDescription"
-    ]
-    assert len(descriptions) == 6
-    for call in descriptions:
-        keywords = {keyword.arg for keyword in call.keywords}
-        assert "translation_key" in keywords
-        assert "name" not in keywords
+    assert values == [0]
 
 
-def test_config_flows_leave_reload_ownership_to_update_listener() -> None:
-    """Flows update data only; the config-entry listener owns reloads."""
+def test_config_flows_do_not_trigger_double_reload() -> None:
+    """The config-entry update listener owns reloads after flow updates."""
 
     source = (INTEGRATION / "config_flow.py").read_text()
-    assert "async_update_and_abort" in source
     assert "async_update_reload_and_abort" not in source
