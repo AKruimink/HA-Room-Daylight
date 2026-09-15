@@ -1,167 +1,211 @@
-# Room Daylight
+<p align="center">
+  <img src="https://brands.home-assistant.io/room_daylight/logo.png" alt="Room Daylight logo" width="320">
+</p>
 
-Room Daylight is a Home Assistant custom integration that estimates **natural daylight inside rooms** for automation and dashboard use.
+# ☀️ Room Daylight — Natural-light estimation for Home Assistant
 
-Version **1.0.0** is a clean-slate whole-house model. Instead of configuring one integration entry per room, it uses one global Room Daylight entry with independently managed **room** and **connection** subentries.
+**Room Daylight** is a custom integration for [Home Assistant](https://www.home-assistant.io/) that estimates how much **natural daylight is available inside each room**.
 
-> Room Daylight is an automation-oriented daylight heuristic. It is designed to give stable, explainable estimates for Home Assistant automations; it is not a replacement for Radiance, climate-based daylight modelling, or a calibrated architectural lux study.
+Rather than using sunrise/sunset alone, Room Daylight combines your outdoor illuminance sensor with the sun's position, window and rooflight geometry, blinds or curtains, room-to-room openings, and optional indoor lux sensors. The result is a room-level lux estimate that can be used in automations to answer a simple question:
 
-## What 1.0.0 models
+> **Is there already enough natural light in this room, or should the lights turn on?**
 
-```text
-Outdoor illuminance + sun position
-              |
-              v
-     Exterior glazed openings
-              |
-              v
-        Native daylight
-              |
-              v
-      Whole-house room graph
-      doors / arches / stairs
-              |
-              v
-       Modelled daylight
-              |
-              v
-       Local lux correction
-              |
-              v
-       Estimated daylight
+Room Daylight does not control your lights. It provides daylight sensors and diagnostics that your own Home Assistant automations can use however you want.
+
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AKruimink&repository=HA-Room-Daylight&category=integration)
+
+> [!NOTE]
+> Room Daylight is an automation-oriented daylight model. It is designed to produce a stable, explainable signal for Home Assistant, not to replace architectural daylight simulation or a calibrated lux survey.
+
+## ✨ Features
+
+- **Whole-house daylight model** — one integration entry contains all rooms and the connections between them.
+- **Sun-aware exterior daylight** — uses outdoor illuminance together with sun azimuth and elevation.
+- **Windows, glazed doors and rooflights** — exterior glazing is modelled as an oriented plane, so vertical windows and rooflights respond differently to the sun.
+- **Rooms without windows** — hallways, landings and other internal rooms can receive daylight through neighbouring rooms.
+- **Room-to-room daylight transfer** — model doors, archways, stairwells and custom openings between rooms.
+- **Multi-hop transfer** — daylight can propagate across several connected rooms while remaining mathematically bounded.
+- **Blinds and curtains** — optionally use Home Assistant `cover` entities to reduce incoming daylight.
+- **Door/opening state** — optionally use a `binary_sensor`, `input_boolean` or `cover` to control whether an internal connection is open.
+- **Indoor lux correction** — local illuminance sensors can gently correct the model without affecting other rooms.
+- **Artificial-light protection** — indoor sensor correction is suspended when configured room lights are on or their state is uncertain.
+- **Explainable diagnostics** — see native daylight, transferred daylight, sensor correction, opening contributions and network convergence.
+- **UI configuration** — configure the integration, rooms and connections from Home Assistant's interface.
+- **Translations** — English, Dutch, French, German and Spanish are included.
+
+## 📚 Table of contents
+
+- [How it works](#-how-it-works)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+  - [Global setup](#global-setup)
+  - [Rooms](#rooms)
+  - [Exterior glazed openings](#exterior-glazed-openings)
+  - [Blinds and curtains](#blinds-and-curtains)
+  - [Room connections](#room-connections)
+  - [Model defaults](#model-defaults)
+- [Entities and diagnostics](#-entities-and-diagnostics)
+- [Automation examples](#-automation-examples)
+- [Tuning the model](#-tuning-the-model)
+- [Troubleshooting](#-troubleshooting)
+- [Removal](#-removal)
+- [Limitations](#-limitations)
+- [Development](#-development)
+
+## 🌤️ How it works
+
+Room Daylight calculates daylight in stages. Outdoor conditions first determine how much daylight reaches each room directly through exterior glazing. The room network then allows some of that modelled daylight to pass through doors, archways and stairwells. Optional physical lux sensors are applied only at the end as a **local** correction.
+
+```mermaid
+flowchart TD
+    Outdoor[Outdoor illuminance] --> Exterior[Exterior daylight model]
+    Sun[Sun position] --> Exterior
+    Glazing[Windows / glazed doors / rooflights] --> Exterior
+    Covers[Blinds and curtains] --> Exterior
+
+    Exterior --> Native[Native daylight per room]
+    Native --> Network[Room-to-room daylight network]
+    Connections[Doors / archways / stairwells] --> Network
+
+    Network --> Modelled[Modelled room daylight]
+    Modelled --> Correction[Local sensor correction]
+    Indoor[Indoor lux sensors] --> Correction
+    Lights[Artificial-light state] --> Correction
+
+    Correction --> Estimated[Estimated daylight]
 ```
 
-The model supports:
+The two opening concepts are deliberately separate:
 
-- one house-wide outdoor illuminance source and sun entity;
-- rooms with zero or more exterior glazed openings;
-- vertical windows and glazed exterior doors;
-- rooflights and skylights with proper 3D solar incidence;
-- arbitrary custom glazed planes;
-- blinds and curtains exposed as Home Assistant `cover` entities;
-- room-to-room daylight transfer through doors, archways, stairwells and custom openings;
-- multiple physical connections between the same pair of rooms;
-- optional door/opening state entities;
-- multi-hop daylight transfer across several rooms;
-- optional indoor lux sensor correction that remains local to its room;
-- artificial-light suppression so configured lamps do not contaminate the daylight correction;
-- detailed per-room diagnostics explaining where the estimate came from.
+- **Exterior glazed openings** admit daylight from outside into a room.
+- **Room connections** transfer already-modelled daylight between configured rooms.
 
-## Requirements
+Indoor lux sensor readings are never fed into the room network, so a sensor sitting in a bright sun patch cannot artificially brighten neighbouring rooms.
+
+### Bounded room network
+
+Room-to-room transfer uses a bounded iterative solver. A connection can redistribute daylight from a brighter room towards a darker connected room, including across multiple hops, but network feedback cannot manufacture a room value brighter than the brightest reachable native daylight source.
+
+The effect of a connection depends on its opening area, transmission, transfer efficiency and the floor area of the receiving room:
+
+```text
+connection weight = opening area
+                    ÷ receiving room floor area
+                    × transfer efficiency
+                    × opening transmission
+```
+
+This means the same doorway can have a greater effect on a small hallway than on a large lounge.
+
+## ✅ Requirements
 
 - Home Assistant **2026.8.0 or newer**.
-- An outdoor illuminance sensor with device class `illuminance`.
-- The normal Home Assistant `sun` integration (usually `sun.sun`).
+- An outdoor illuminance sensor with the `illuminance` device class.
+- Home Assistant's `sun` integration, normally available as `sun.sun`.
 
-The integration has no third-party Python runtime dependencies.
+Room Daylight has no third-party Python runtime dependencies.
 
-## Installation
+## 📦 Installation
 
 ### HACS
 
-1. Add this repository to HACS as a custom **Integration** repository.
-2. Install **Room Daylight**.
-3. Restart Home Assistant.
-4. Go to **Settings -> Devices & services -> Add integration**.
-5. Search for **Room Daylight**.
+The recommended installation method is [HACS](https://hacs.xyz/).
 
-### Manual
+1. Open **HACS** in Home Assistant.
+2. Add `https://github.com/AKruimink/HA-Room-Daylight` as a custom **Integration** repository if it is not already available.
+3. Find and install **Room Daylight**.
+4. Restart Home Assistant.
+5. Go to **Settings → Devices & services → Add integration**.
+6. Search for **Room Daylight** and complete the setup flow.
 
-Copy:
+You can also use the HACS button near the top of this README to open the repository directly in Home Assistant.
+
+### Manual installation
+
+Copy the complete directory:
 
 ```text
 custom_components/room_daylight/
 ```
 
-into your Home Assistant configuration directory at:
+into your Home Assistant configuration directory so the final path is:
 
 ```text
 /config/custom_components/room_daylight/
 ```
 
-Restart Home Assistant and add the integration from **Settings -> Devices & services**.
+Restart Home Assistant, then go to **Settings → Devices & services → Add integration** and search for **Room Daylight**.
 
-## Removal
+## ⚙️ Configuration
 
-1. In Home Assistant, open **Settings -> Devices & services -> Integrations**.
-2. Remove **Room Daylight**.
-3. If installed through HACS, uninstall the repository from HACS. For a manual installation, remove `/config/custom_components/room_daylight`.
-4. Restart Home Assistant after removing the integration files.
+Room Daylight is configured entirely through the Home Assistant UI.
 
-If you only want to remove a room, remove any connections that reference it first. A dangling connection is ignored safely at runtime, but removing the connection first keeps the stored configuration tidy.
+It uses a single top-level integration entry for the house-wide daylight environment. **Rooms** and **room connections** are then added underneath it as independently configurable subentries.
 
-## Initial setup
+### Global setup
 
-Room Daylight is deliberately a **single integration entry**.
+During initial setup, choose:
 
-During initial setup choose:
+| Setting | Description |
+| --- | --- |
+| **Outdoor illuminance** | Exterior lux sensor shared by the complete model. |
+| **Sun entity** | Home Assistant sun entity, normally `sun.sun`. |
+| **Model defaults** | Starting values applied when rooms, glazing and connections are created. |
 
-- **Outdoor illuminance** — the exterior lux sensor used as the house-wide daylight environment.
-- **Sun entity** — normally `sun.sun`.
-- **Model defaults** — optional tuning defaults for newly configured rooms, openings and connections.
+After setup, open the Room Daylight integration entry to add rooms and connections.
 
-After the parent entry is created, Home Assistant immediately opens the first room flow. Additional rooms and connections are managed beneath the same Room Daylight integration entry.
+### Rooms
 
-## Rooms
+A room represents one physical space in the house.
 
-Each room stores:
+For each room you can configure:
 
-- room name;
-- floor area in m²;
-- optional Home Assistant area;
-- zero to twenty exterior glazed openings;
-- optional indoor illuminance sensors;
-- optional artificial-light entities that can affect those sensors;
-- room-level daylight utilisation and sensor-correction tuning.
+| Setting | Description |
+| --- | --- |
+| **Name** | Human-readable room name. |
+| **Floor area** | Approximate room floor area in square metres. |
+| **Home Assistant area** | Optional HA area association. |
+| **Exterior glazed openings** | Zero or more windows, glazed exterior doors or rooflights. |
+| **Indoor lux sensors** | Optional local illuminance sensors used for final correction. |
+| **Artificial lights** | Optional entities whose light output can influence the indoor lux sensors. |
+| **Daylight utilisation** | Room-specific efficiency for converting admitted exterior light into useful room illuminance. |
+| **Sensor correction strength** | How strongly valid indoor sensor readings influence the final estimate. |
 
-A room may have **zero exterior openings**. This is the intended configuration for hallways, landings and other internal spaces that receive daylight only through connected rooms.
+A room may have **zero exterior openings**. This is useful for hallways, landings and internal rooms that receive daylight only through connected spaces.
 
-Room identity is based on Home Assistant's stable config-subentry ID, not the room name. Renaming a room therefore does not change its sensor unique IDs or break its connections.
+Room identity is based on Home Assistant's stable config-subentry ID, so renaming a room does not change its entity unique IDs or break configured connections.
 
-## Exterior glazed openings
+### Exterior glazed openings
 
-An exterior glazed opening is any glazed surface that admits daylight directly from outside: a normal window, glazed exterior door, French door, sliding patio door, rooflight, skylight, and so on.
+An exterior glazed opening is any glazed surface that admits daylight directly from outdoors, including:
 
-Every opening is reduced internally to a plane with:
+- normal windows;
+- glazed exterior doors;
+- French or patio doors;
+- sliding glass doors;
+- rooflights;
+- skylights.
 
-- glazed area;
-- azimuth;
-- tilt;
-- glazing transmission;
-- optional cover openness.
+Room Daylight supports three opening types.
 
-### Wall window / glazed exterior door
+#### Wall window / glazed exterior door
 
-Configure:
+Configure the opening's name, width, height, outward-facing direction, transmission and optional blind/curtain entity. Wall glazing is modelled as a vertical surface.
 
-- name;
-- width and height;
-- outward-facing direction (azimuth);
-- optional blind/curtain cover;
-- glazing transmission.
+#### Rooflight / skylight
 
-Wall glazing always uses a tilt of **90°**.
+Configure the name, width, length, roof pitch, facing direction, transmission and optional blind entity.
 
-### Rooflight / skylight
+A flat rooflight uses a roof pitch of **0°**. Its facing direction has no practical effect because the surface points directly upwards.
 
-Configure:
+#### Custom opening
 
-- name;
-- width and length;
-- roof pitch;
-- facing direction;
-- optional blind cover;
-- glazing transmission.
+Use a custom opening for unusual glazing. Width, height, azimuth and tilt can be specified directly.
 
-A flat rooflight uses a roof pitch of **0°**. Its azimuth has no practical effect because its surface normal points straight upwards.
+#### Orientation reference
 
-### Custom glazed plane
-
-Configure width, height, azimuth and tilt explicitly.
-
-### Orientation conventions
-
-Azimuth is clockwise from north:
+Azimuth is measured clockwise from north:
 
 | Direction | Azimuth |
 | --- | ---: |
@@ -174,260 +218,283 @@ Tilt is measured from horizontal:
 
 | Surface | Tilt |
 | --- | ---: |
-| Flat, sky-facing rooflight | 0° |
+| Flat sky-facing rooflight | 0° |
 | 35° pitched rooflight | 35° |
 | Vertical wall glazing | 90° |
 
-The direct component is calculated from the dot product of the sun vector and opening surface normal. This means a high sun naturally has strong incidence on a rooflight while a vertical façade opening behaves differently. Diffuse daylight also uses an isotropic sky-view factor, so upward-facing glazing sees more sky than vertical glazing.
+The direct daylight contribution is based on the angle between the sun and the glazed surface. This is why a rooflight naturally behaves differently from a wall window as the sun rises and sets.
 
-## Blinds and curtains
+### Blinds and curtains
 
-An exterior opening can reference a Home Assistant `cover` entity.
+An exterior opening can optionally reference a Home Assistant `cover` entity.
 
-- If `current_position` is available, 0% is treated as fully closed and 100% as fully open.
-- Otherwise `open`/`opening` is treated as open and `closed`/`closing` as closed.
-- Missing or unavailable cover state fails closed and contributes no daylight.
+If the cover exposes `current_position`, Room Daylight uses that position continuously:
 
-This conservative behaviour is intentional for lighting automation.
+- `0%` = fully closed;
+- `100%` = fully open.
 
-## Room connections
+If no position is available, the normal open/closed cover state is used.
 
-A connection is a first-class object between two rooms. It is not stored inside either room, so one physical doorway only needs to be configured once.
+> [!IMPORTANT]
+> An unavailable or unknown configured cover is treated as **closed**. This conservative behaviour avoids assuming daylight is available when the integration cannot confirm that the opening is unobstructed.
+
+### Room connections
+
+A room connection represents a physical opening through which daylight can pass between two configured rooms.
 
 Supported connection types are:
 
-- **Door / doorway** — width × height;
-- **Open archway** — width × height;
-- **Stairwell** — width × opening length;
-- **Custom opening** — width × height.
+| Type | Typical use |
+| --- | --- |
+| **Door / doorway** | Standard internal door or doorway. |
+| **Open archway** | Permanently open connection between two rooms. |
+| **Stairwell** | Stair or floor opening connecting spaces. |
+| **Custom opening** | Other internal opening geometry. |
 
-Multiple connections between the same rooms are allowed.
+A connection belongs to the relationship between two rooms rather than either room individually, so each physical doorway only needs to be configured once. Multiple connections between the same two rooms are allowed.
 
-### Optional state entity
+#### Door/opening state
 
-A connection can reference a:
+A connection can optionally use a Home Assistant state entity:
 
 - `binary_sensor`;
 - `input_boolean`;
 - `cover`.
 
-Without a state entity, the connection is considered permanently open.
+Without a state entity, the connection is treated as permanently open.
 
-For binary-style entities:
+For binary-style entities, `on` means open and `off` means closed. **Invert state** can be enabled for devices with opposite semantics. Position-aware covers can vary continuously between closed and fully open.
 
-- `on` = open;
-- `off` = closed.
+> [!IMPORTANT]
+> If a configured connection state entity is unavailable or unknown, Room Daylight treats the connection as **closed**.
 
-`Invert state` handles devices with opposite semantics. Covers use `current_position` where available.
+#### Closed transmission
 
-If a configured state entity is unavailable, the opening **fails closed**. Underestimating daylight and turning a light on is safer than assuming a doorway is open and leaving a room dark.
+A closed connection does not have to block all daylight. **Closed transmission** controls how much light may still pass while the opening is closed.
 
-### Closed transmission
+Examples:
 
-Connections are not internally restricted to a binary open/closed model.
+| Opening | Example closed transmission |
+| --- | ---: |
+| Solid internal door | `0.00` |
+| Partially glazed internal door | `0.15` |
+| Permanently open archway | `1.00` |
 
-`Closed transmission` lets a closed opening pass some daylight. For example:
+These are examples, not prescribed values; tune them for your home.
 
-- solid door: `0.00`;
-- partly glazed internal door: perhaps `0.15`;
-- open door: the runtime transmission rises to `1.00`.
+### Model defaults
 
-The effective runtime transmission is interpolated continuously for position-aware covers.
+Initial setup provides defaults used when new rooms, exterior openings and connections are created.
 
-## Whole-house transfer model
-
-Room-to-room transfer uses a bounded weighted-equilibration solver.
-
-For a connection transmitting light into room B:
-
-```text
-weight = opening_area
-         / receiving_room_floor_area
-         * transfer_efficiency
-         * opening_transmission
-```
-
-The same physical opening is therefore mathematically asymmetric: it naturally affects a 5 m² hallway more strongly than a 30 m² lounge.
-
-For each iteration:
-
-```text
-candidate = (
-    native_lux
-    + sum(connection_weight * neighbouring_room_lux)
-) / (
-    1 + sum(connection_weight)
-)
-
-new_lux = max(native_lux, candidate)
-```
-
-The solver stops when the largest change is below **0.1 lx** or after a hard maximum of 50 iterations.
-
-### Important invariant
-
-The room graph can redistribute modelled daylight, but it cannot manufacture brightness:
-
-> A room cannot become brighter through transfer than the brightest reachable native daylight source.
-
-This avoids the positive-feedback behaviour of a naïve additive room network and keeps multi-hop results predictable.
-
-## Indoor lux sensor correction
-
-Indoor physical lux sensors are optional and are used **after** room-network transfer.
-
-That order is important:
-
-```text
-Exterior daylight
-    -> native daylight
-    -> room network
-    -> modelled daylight
-    -> local lux correction
-    -> final estimate
-```
-
-Physical sensor readings never feed the room graph, so a sensor sitting in a sun patch cannot make distant rooms artificially brighter.
-
-When several indoor sensors are configured, Room Daylight uses their **median** to reduce sensitivity to a single unusual measurement.
-
-The correction is blended using the room's `Indoor sensor correction strength`.
-
-If any configured artificial light entity is `on`, missing, unknown or unavailable,
-sensor correction for that room is conservatively suppressed. The modelled
-natural-light value is still available and the artificial light cannot propagate
-into other rooms. Treating an unavailable light state this way prevents an
-unverified electric-light contribution from being learnt as daylight.
-
-## Sensors
-
-Each room exposes one enabled sensor:
-
-- **Estimated daylight** — the final automation-oriented estimate in lux.
-
-It also creates disabled-by-default diagnostic sensors:
-
-- **Native daylight**;
-- **Transferred daylight**;
-- **Indoor sensor median**;
-- **Indoor sensor adjustment**;
-- **Effective daylight ratio**.
-
-Enable any diagnostic sensor from the entity registry when you want to tune or inspect the model.
-
-The main Estimated daylight entity also exposes detailed attributes for every exterior opening and room connection, including incidence, sky view, cover openness, transfer weight, transmission, contribution and solver convergence information.
-
-## Default model parameters
-
-| Parameter | Default | Meaning |
+| Parameter | Default | Description |
 | --- | ---: | --- |
-| Diffuse daylight fraction | 0.35 | Share of the orientation heuristic attributed to diffuse sky light |
-| Glazing transmission | 0.70 | Default optical transmission for newly configured exterior glazing |
-| Daylight utilisation | 0.35 | Room-level reduction from admitted glazing light to useful room illuminance |
-| Room-to-room transfer efficiency | 0.65 | Default efficiency for newly configured internal connections |
-| Indoor sensor correction strength | 0.35 | Blend between the network model and local physical lux sensors |
+| **Diffuse daylight fraction** | `0.35` | Share of the exterior model attributed to diffuse sky light. |
+| **Glazing transmission** | `0.70` | Default optical transmission of exterior glazing. |
+| **Daylight utilisation** | `0.35` | How effectively admitted daylight contributes to useful room illuminance. |
+| **Room-to-room transfer efficiency** | `0.65` | Default efficiency of internal openings. |
+| **Indoor sensor correction strength** | `0.35` | Blend between modelled daylight and local physical lux sensors. |
 
-`Diffuse daylight fraction` is a global runtime value. The other values are used as defaults when the corresponding room/opening/connection is configured and can then be tuned independently.
+These are deliberately starting values rather than universal physical constants. Glazing, room geometry, decoration and sensor placement vary considerably from one home to another.
 
-## Clean 1.0.0 schema
+## 📊 Entities and diagnostics
 
-Version 1.0.0 intentionally contains **no migration path** from the previous experimental one-entry-per-room schema.
+Each configured room exposes an enabled **Estimated daylight** sensor in lux. This is the primary entity intended for dashboards and automations.
 
-If an old development configuration still exists, remove it before installing 1.0.0 and configure the single new Room Daylight entry from scratch.
+Room Daylight also creates diagnostic entities that are disabled by default:
 
-This keeps the production schema and runtime code small instead of carrying compatibility logic for unpublished development layouts.
+| Entity | Meaning |
+| --- | --- |
+| **Native daylight** | Daylight reaching the room directly through exterior glazing. |
+| **Transferred daylight** | Additional modelled daylight attributed to connected rooms. |
+| **Indoor sensor median** | Median of currently valid local lux sensor readings. |
+| **Indoor sensor adjustment** | Correction being applied from physical sensors. |
+| **Effective daylight ratio** | Relationship between estimated indoor daylight and outdoor illuminance. |
 
-## Architecture
+Enable diagnostics from the Home Assistant entity registry when you want to tune or investigate a room.
 
-The integration is split by responsibility:
+The main Estimated daylight sensor also exposes detailed attributes for:
 
-```text
-custom_components/room_daylight/
-├── __init__.py       # config-entry lifecycle
-├── config_flow.py    # parent + room + connection UI flows
-├── coordinator.py    # HA state subscriptions and orchestration
-├── models.py         # framework-independent data objects
-├── calculation.py    # exterior daylight + local sensor maths
-├── network.py        # pure room-graph solver
-├── sensor.py         # thin coordinator-backed entities
-├── const.py
-├── manifest.json
-└── translations/
-    ├── de.json
-    ├── en.json
-    ├── es.json
-    ├── fr.json
-    └── nl.json
+- individual exterior-opening contributions;
+- incidence and sky-view factors;
+- cover openness and effective transmission;
+- room-connection weights and transmission;
+- per-connection daylight contribution;
+- sensor correction state;
+- network iteration count and convergence.
+
+### Indoor lux sensor correction
+
+Indoor lux sensors are optional. When configured, their median valid reading is used as a final room-local correction after the exterior model and room network have already been calculated.
+
+Correction is suppressed while any configured artificial-light entity is on. It is also suppressed if a configured artificial-light state is unknown or unavailable, which prevents electric light from being learned as natural daylight.
+
+The underlying modelled daylight remains available even while correction is suppressed.
+
+## 🤖 Automation examples
+
+The Estimated daylight entity behaves like a normal illuminance sensor, so it can be used directly in Home Assistant automations.
+
+### Only turn on a light when the room is dark enough
+
+```yaml
+condition:
+  - condition: numeric_state
+    entity_id: sensor.living_room_estimated_daylight
+    below: 80
 ```
 
-`calculation.py`, `network.py` and `models.py` deliberately have no Home Assistant imports. The daylight maths can therefore be unit-tested independently from Home Assistant's framework.
+Use a threshold that matches the room and the behaviour you want. There is no single lux value that is correct for every room or activity.
 
-The maintained configuration and entity translations are English (`en`), German (`de`), Spanish (`es`), French (`fr`) and Dutch (`nl`). English is the canonical translation contract; maintained locale files contain the same keys and placeholders so new room, connection and exterior-opening UI is available consistently in every supported language.
+### Turn a hallway light on when occupied and daylight is low
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the design invariants and lifecycle details.
+```yaml
+alias: Hallway light when dark
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.hallway_motion
+    to: "on"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.hallway_estimated_daylight
+    below: 60
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: restart
+```
 
-## Troubleshooting
+Entity IDs in these examples are illustrative; use the entities created in your Home Assistant instance.
+
+## 🎛️ Tuning the model
+
+A good starting workflow is:
+
+1. Configure the room dimensions and exterior openings as accurately as practical.
+2. Verify opening orientation, roof pitch and cover state.
+3. Add internal room connections and check their diagnostics.
+4. Observe **Native daylight** and **Transferred daylight** before adjusting model parameters.
+5. Add indoor lux sensors only after the geometric model behaves sensibly.
+6. Tune daylight utilisation, transmission and correction strength gradually rather than changing several parameters at once.
+
+Physical indoor sensors are best used as a correction to a sensible geometric model, not as a replacement for it.
+
+## 🆘 Troubleshooting
 
 ### Estimated daylight stays at 0 lx
 
-Check the primary sensor attributes first. `outdoor_illuminance_available` should be `true` and `outdoor_lux` should contain a valid non-negative reading. Also check each opening's `cover_openness`: an unavailable blind or curtain entity deliberately fails closed.
+Check that:
+
+- the outdoor illuminance sensor has a valid, non-negative reading;
+- the configured sun entity is available;
+- the room has a usable exterior opening, or a connection to another room receiving daylight;
+- configured blinds or curtains are not closed or unavailable.
+
+The Estimated daylight sensor attributes contain additional opening and environment diagnostics.
 
 ### A connected room receives no transferred daylight
 
-Check the connection diagnostics on the receiving room. An unavailable configured door/opening entity fails closed. A solid closed door with `Closed transmission = 0` therefore contributes no daylight until its state becomes open.
+Check that:
 
-### Indoor sensor correction is not applied
+- both connected rooms still exist;
+- the opening dimensions are sensible;
+- the state entity reports the opening as open and available;
+- **Closed transmission** is non-zero if you expect light through a closed door;
+- transfer efficiency is not configured unusually low.
 
-Correction is intentionally suppressed when any configured artificial-light entity is on, missing, unknown or unavailable. The `sensor_correction_blocked` attribute exposes this decision.
+The connection diagnostics on the Estimated daylight sensor show the current transmission, transfer weight and contribution.
+
+### Indoor sensor correction is not being applied
+
+Correction is deliberately disabled if a configured artificial-light entity is:
+
+- on;
+- missing;
+- unknown;
+- unavailable.
+
+Also confirm that at least one configured indoor lux sensor currently has a valid numeric reading.
 
 ### `network_converged` is false
 
-The solver stops after a bounded number of iterations even if the configured graph has not reached the 0.1 lx convergence threshold. This should be unusual for realistic room and opening dimensions. Check for very large opening areas, very small receiving floor areas or unusually high transfer efficiency. The estimate remains bounded by the network's native daylight values.
+The network solver has a hard iteration limit so unusual configurations cannot iterate indefinitely.
 
-## Development
+A non-converged result should be uncommon with realistic room sizes and opening dimensions. Check for very large internal openings, extremely small receiving rooms or unusually high transfer efficiencies. The solver remains bounded even if it reaches the iteration limit.
 
-Install the lightweight development tools into a virtual environment:
+### Enable debug logging
 
-```bash
-python -m pip install -r requirements-dev.txt
+If you need more detail while diagnosing a problem, enable debug logging for the integration:
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.room_daylight: debug
 ```
 
-Run the test suite:
+Restart Home Assistant, reproduce the issue, and include the relevant log entries and room diagnostics when opening an issue.
 
-```bash
-pytest -q
+## 🗑️ Removal
+
+### Remove Room Daylight from Home Assistant
+
+1. Go to **Settings → Devices & services → Integrations**.
+2. Open **Room Daylight**.
+3. Choose **Delete** / **Remove integration**.
+4. Confirm the removal.
+
+This removes the integration entry, its room/connection subentries and its entities from Home Assistant.
+
+### Remove the installed files
+
+If installed through HACS:
+
+1. Open HACS.
+2. Find **Room Daylight**.
+3. Uninstall it.
+4. Restart Home Assistant if prompted.
+
+For a manual installation, delete:
+
+```text
+/config/custom_components/room_daylight/
 ```
 
-Run the pure-model coverage check:
+and restart Home Assistant.
 
-```bash
-pytest -q \
-  --cov=custom_components.room_daylight.calculation \
-  --cov=custom_components.room_daylight.models \
-  --cov=custom_components.room_daylight.network \
-  --cov-report=term-missing
-```
+### Remove only a room or connection
 
-Run lint and syntax checks:
+Rooms and connections can be managed independently beneath the Room Daylight integration entry.
 
-```bash
-ruff check .
-python -m compileall -q custom_components tests
-```
+When removing a room, remove any room connections that reference it first so the configured network remains clear and consistent.
 
-The framework-independent calculation, model and network layers are covered directly without requiring a Home Assistant installation. Home Assistant-facing config-flow, coordinator and entity lifecycle behaviour should additionally be smoke-tested in the minimum supported Home Assistant release before publishing a release.
+## ℹ️ Limitations
 
-The tests focus particularly on model parsing, rooflight geometry, zero-opening internal rooms, cover transmission, bounded output, local sensor correction, multi-hop transfer, asymmetric receiving-room weights, multiple connections, package metadata, translation contracts and the no-brightness-creation guarantee.
+Room Daylight deliberately does not attempt to model:
 
-## Limitations
-
-Room Daylight deliberately does not model:
-
-- detailed room geometry or sensor coordinates;
-- wall/ceiling reflectance or multiple internal reflections;
-- obstructions, overhangs, neighbouring buildings or vegetation;
-- weather/sky luminance distributions beyond the chosen outdoor lux source;
+- detailed room shape or sensor coordinates;
+- wall and ceiling reflectance;
+- multiple internal reflections;
+- exterior obstructions such as neighbouring buildings, trees or overhangs;
+- detailed sky luminance distributions beyond the selected outdoor illuminance source;
 - spectral glazing properties;
-- full photometric ray tracing.
+- photometric ray tracing.
 
-Treat the result as a stable automation signal to be tuned against your home, not as an architectural compliance value.
+Treat the result as a **consistent automation signal that can be tuned for your home**, rather than an architectural compliance measurement.
+
+## 🛠️ Development
+
+The exterior daylight calculation, configuration models and room-network solver are intentionally separated from Home Assistant-specific orchestration so their behaviour can be tested independently.
+
+Run the test suite with:
+
+```bash
+python -m pip install pytest
+python -m pytest -v
+```
+
+For implementation details, mathematical invariants and Home Assistant lifecycle notes, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## 💬 Issues and feedback
+
+If you find a bug or have a real-world case that the model does not handle well, please [open an issue](https://github.com/AKruimink/HA-Room-Daylight/issues) and include the relevant room/opening configuration, diagnostics and logs where possible.
