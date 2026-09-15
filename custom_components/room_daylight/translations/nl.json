@@ -1,116 +1,312 @@
 {
   "title": "Room Daylight",
   "config": {
-    "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "Maak een daglichtsensor voor een ruimte",
-        "description": "Configureer de ruimte en de bronentiteiten waarmee het natuurlijke daglicht wordt geschat. De raamgegevens worden in de volgende stap ingevoerd.",
+        "title": "Room Daylight instellen",
+        "description": "Kies de daglichtbronnen voor de hele woning. Kamers en verbindingen worden na de installatie als subitems beheerd.",
         "data": {
-          "name": "Naam van de ruimte *",
-          "outside_illuminance": "Buitenverlichtingssensor *",
-          "sun_entity": "Zonentiteit *",
-          "floor_area": "Vloeroppervlak *",
-          "window_count": "Aantal ramen / glasopeningen *",
-          "indoor_illuminance": "Optionele verlichtingssensoren binnen",
-          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt",
-          "show_advanced": "Configure advanced model settings"
+          "outdoor_illuminance_entity": "Buitenverlichtingssterkte",
+          "sun_entity": "Zon-entiteit"
+        },
+        "sections": {
+          "model_defaults": {
+            "name": "Standaardwaarden van het model",
+            "description": "Standaardwaarden voor nieuw geconfigureerde kamers, beglazing en verbindingen. Dit zijn heuristische parameters voor automatisering en geen instellingen voor architectonische simulaties.",
+            "data": {
+              "diffuse_fraction": "Aandeel diffuus daglicht",
+              "glazing_transmission": "Lichttransmissie van beglazing",
+              "daylight_utilisation": "Daglichtbenutting in de kamer",
+              "transfer_efficiency": "Overdrachtsefficiëntie tussen kamers",
+              "sensor_correction_strength": "Correctiesterkte van binnensensoren"
+            },
+            "data_description": {
+              "diffuse_fraction": "Het aandeel binnenkomend daglicht dat als diffuus hemellicht wordt beschouwd in plaats van direct zonlicht.",
+              "glazing_transmission": "Standaardaandeel daglicht dat door nieuw geconfigureerde buitenbeglazing wordt doorgelaten.",
+              "daylight_utilisation": "Standaardaandeel van het toegelaten daglicht dat op kamerniveau als bruikbare verlichtingssterkte wordt beschouwd.",
+              "transfer_efficiency": "Standaardefficiëntie die wordt toegepast wanneer daglicht via nieuw geconfigureerde kamerverbindingen wordt overgedragen.",
+              "sensor_correction_strength": "Standaard mengsterkte voor correctie met lokale luxsensoren in nieuw geconfigureerde kamers."
+            }
+          }
         },
         "data_description": {
-          "name": "Een herkenbare naam voor deze ruimte, bijvoorbeeld Woonkamer of Keuken.",
-          "outside_illuminance": "Een sensor met apparaatklasse Verlichtingssterkte die het actuele buitenlicht in lux weergeeft. Dit kan een fysieke buitenluxsensor zijn of een geschatte bron zoals de Illuminance-integratie.",
-          "sun_entity": "Een Home Assistant-zonentiteit met de huidige zonne-azimut en -hoogte. De standaard Sun-integratie levert normaal sun.sun.",
-          "floor_area": "Het geschatte interne vloeroppervlak van de ruimte in vierkante meter. Lengte × breedte is meestal voldoende.",
-          "window_count": "Het aantal afzonderlijke externe ramen, glazen deuren of andere glasopeningen dat daglicht aan deze ruimte levert.",
-          "indoor_illuminance": "Optionele verlichtingssensoren in de ruimte. Hun metingen corrigeren het model slechts beperkt, zodat lokale lichte of donkere plekken niet kunnen domineren.",
-          "artificial_lights": "Selecteer lampen die de gekozen binnensensoren merkbaar beïnvloeden. De correctie met binnensensoren wordt genegeerd zolang een geselecteerde lamp aan staat.",
-          "show_advanced": "Adds advanced tuning fields during setup. Leave this off unless you want to override Room Daylight's recommended model defaults."
+          "outdoor_illuminance_entity": "Een buitenlichtsensor die de huidige verlichtingssterkte buiten in lux rapporteert.",
+          "sun_entity": "De Home Assistant-zonentiteit die wordt gebruikt voor de azimut en hoogte van de zon."
         }
       },
       "reconfigure": {
-        "title": "Daglichtmodel opnieuw configureren",
-        "description": "Werk de daglichtbron, zonentiteit, ruimtegrootte of ramen bij. Binnensensoren en kunstlichtuitsluitingen kunnen via Configureren / Opties worden gewijzigd.",
+        "title": "Room Daylight opnieuw configureren",
+        "description": "Werk de globale daglichtbronnen of standaard modelparameters bij.",
         "data": {
-          "outside_illuminance": "Buitenverlichtingssensor *",
-          "sun_entity": "Zonentiteit *",
-          "floor_area": "Vloeroppervlak *",
-          "window_count": "Aantal ramen / glasopeningen *",
-          "show_advanced": "Configure advanced model settings"
+          "outdoor_illuminance_entity": "Buitenverlichtingssterkte",
+          "sun_entity": "Zon-entiteit"
+        },
+        "sections": {
+          "model_defaults": {
+            "name": "Standaardwaarden van het model",
+            "description": "Het aandeel diffuus daglicht geldt globaal. De andere waarden zijn standaardwaarden voor nieuwe kamers, openingen en verbindingen; bestaande subitemwaarden blijven ongewijzigd.",
+            "data": {
+              "diffuse_fraction": "Aandeel diffuus daglicht",
+              "glazing_transmission": "Lichttransmissie van beglazing",
+              "daylight_utilisation": "Daglichtbenutting in de kamer",
+              "transfer_efficiency": "Overdrachtsefficiëntie tussen kamers",
+              "sensor_correction_strength": "Correctiesterkte van binnensensoren"
+            },
+            "data_description": {
+              "diffuse_fraction": "Het aandeel binnenkomend daglicht dat als diffuus hemellicht wordt beschouwd in plaats van direct zonlicht.",
+              "glazing_transmission": "Standaardaandeel daglicht dat door nieuw geconfigureerde buitenbeglazing wordt doorgelaten.",
+              "daylight_utilisation": "Standaardaandeel van het toegelaten daglicht dat op kamerniveau als bruikbare verlichtingssterkte wordt beschouwd.",
+              "transfer_efficiency": "Standaardefficiëntie die wordt toegepast wanneer daglicht via nieuw geconfigureerde kamerverbindingen wordt overgedragen.",
+              "sensor_correction_strength": "Standaard mengsterkte voor correctie met lokale luxsensoren in nieuw geconfigureerde kamers."
+            }
+          }
         },
         "data_description": {
-          "outside_illuminance": "Een sensor met apparaatklasse Verlichtingssterkte die het actuele buitenlicht in lux weergeeft.",
-          "sun_entity": "Een Home Assistant-zonentiteit met zonne-azimut en -hoogte.",
-          "floor_area": "Geschat intern vloeroppervlak in vierkante meter.",
-          "window_count": "Wijzig dit aantal om in de volgende stappen ramen toe te voegen of te verwijderen.",
-          "show_advanced": "Open the advanced model step and show per-window transmission. Existing advanced values are preserved when this is left off."
-        }
-      },
-      "window": {
-        "title": "Raam {window_number} van {window_total}",
-        "description": "Voer één externe glasopening in. Meet ongeveer de glasopening en niet de muur. Azimut is de kompasrichting waarin het raam naar buiten kijkt: Noord 0°, Oost 90°, Zuid 180°, West 270°.",
-        "data": {
-          "width": "Glasbreedte *",
-          "height": "Glashoogte *",
-          "azimuth": "Naar buiten gerichte azimut *",
-          "cover_entity": "Optionele jaloezie-/gordijnentiteit",
-          "transmission": "Window transmission *"
-        },
-        "data_description": {
-          "width": "Geschatte breedte van de glasopening in meter. Meet bij Franse of schuifdeuren de volledige glazen deuropening.",
-          "height": "Geschatte hoogte van de glasopening in meter.",
-          "azimuth": "Kompasrichting in graden waarin dit raam naar buiten kijkt. Noord = 0°, Oost = 90°, Zuid = 180°, West = 270°.",
-          "cover_entity": "Optionele cover, binaire sensor of input boolean die aangeeft of de opening bedekt is. Een volledig gesloten cover of ingeschakelde binaire/input boolean sluit dit raam uit.",
-          "transmission": "Fraction of exterior daylight retained after glazing and frame losses. 1.00 means no loss; the recommended default is 0.65."
-        }
-      },
-      "advanced": {
-        "title": "Advanced daylight model",
-        "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
-        "data": {
-          "calibration": "Room calibration *",
-          "daylight_gain": "Daylight gain *",
-          "diffuse_base": "Diffuse daylight factor *",
-          "sensor_blend": "Indoor sensor blend *",
-          "sensor_min_ratio": "Minimum sensor correction ratio *",
-          "sensor_max_ratio": "Maximum sensor correction ratio *"
-        },
-        "data_description": {
-          "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",
-          "daylight_gain": "Controls how strongly effective window area contributes to indoor daylight. The recommended default is 0.15.",
-          "diffuse_base": "Minimum orientation contribution from a window when it is not facing the sun. 0 disables diffuse contribution; 1 treats orientation as irrelevant. The recommended default is 0.35.",
-          "sensor_blend": "How strongly optional indoor lux sensors influence the final estimate. 0 ignores them; 1 uses the bounded indoor reading entirely. The recommended default is 0.25.",
-          "sensor_min_ratio": "Lowest indoor-sensor value allowed relative to the physical model before blending. 0.50 means a low sensor reading cannot be treated as less than half of the model estimate.",
-          "sensor_max_ratio": "Highest indoor-sensor value allowed relative to the physical model before blending. 2.00 means a high sensor reading cannot be treated as more than twice the model estimate."
+          "outdoor_illuminance_entity": "Een buitenlichtsensor die de huidige verlichtingssterkte buiten in lux rapporteert.",
+          "sun_entity": "De Home Assistant-zonentiteit die wordt gebruikt voor de azimut en hoogte van de zon."
         }
       }
-    },
-    "error": {
-      "required": "Dit veld is verplicht.",
-      "positive_number": "Voer een getal groter dan nul in.",
-      "azimuth_range": "Voer een azimut in van 0° tot, maar niet inclusief, 360°.",
-      "window_count_range": "Enter between 1 and 20 windows.",
-      "zero_to_one": "Enter a value from 0 to 1.",
-      "advanced_range": "Enter a value within the allowed range for this field.",
-      "sensor_ratio_order": "Maximum sensor correction must be greater than or equal to the minimum correction."
-    },
-    "abort": {
-      "already_configured": "Een ruimte met deze naam is al geconfigureerd.",
-      "reconfigure_successful": "Room Daylight is succesvol opnieuw geconfigureerd."
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Room Daylight-opties",
-        "description": "Beheer optionele correctie met binnensensoren en kunstverlichting die deze correctie tijdelijk uitschakelt.",
-        "data": {
-          "indoor_illuminance": "Verlichtingssensoren binnen",
-          "artificial_lights": "Kunstverlichting die binnensensoren beïnvloedt"
+  "config_subentries": {
+    "room": {
+      "title": "Kamer",
+      "step": {
+        "user": {
+          "title": "Kamer toevoegen",
+          "description": "Configureer een kamer. Binnenkamers mogen geen beglaasde buitenopeningen hebben.",
+          "data": {
+            "room_name": "Kamernaam",
+            "floor_area_m2": "Vloeroppervlak (m²)",
+            "area_id": "Home Assistant-ruimte",
+            "opening_count": "Beglaasde buitenopeningen",
+            "indoor_lux_sensors": "Binnenlichtsensoren",
+            "artificial_light_entities": "Kunstlicht dat deze sensoren beïnvloedt"
+          },
+          "sections": {
+            "room_model": {
+              "name": "Kamermodel",
+              "description": "Kamerspecifieke afstelling. De getoonde standaardwaarden komen uit de globale modelinstellingen.",
+              "data": {
+                "daylight_utilisation": "Daglichtbenutting",
+                "sensor_correction_strength": "Correctiesterkte van binnensensoren"
+              },
+              "data_description": {
+                "daylight_utilisation": "Schaalt het toegelaten daglicht van buiten naar een voor automatisering bedoelde schatting van de verlichtingssterkte in de kamer.",
+                "sensor_correction_strength": "Bepaalt hoe sterk geldige lokale luxmetingen de gemodelleerde daglichtwaarde bijstellen."
+              }
+            }
+          },
+          "data_description": {
+            "room_name": "Een gebruiksvriendelijke naam voor de kamer. Hernoemen verandert de identiteit van de kamer niet.",
+            "floor_area_m2": "Geschat vloeroppervlak dat wordt gebruikt om buitenlicht en overgedragen daglicht te schalen.",
+            "area_id": "Optionele Home Assistant-ruimte die als voorgestelde ruimte voor het kamerapparaat wordt gebruikt.",
+            "opening_count": "Aantal beglaasde buitenvlakken dat rechtstreeks daglicht van buiten binnenlaat. Gebruik 0 voor binnenkamers.",
+            "indoor_lux_sensors": "Optionele lokale lichtsensoren die alleen worden gebruikt om deze kamer na netwerkoverdracht te corrigeren.",
+            "artificial_light_entities": "Lampen of schakelaars waarvan een actieve of niet-beschikbare status de correctie door binnensensoren onderdrukt."
+          }
         },
-        "data_description": {
-          "indoor_illuminance": "Selecteer één of meer verlichtingssensoren in deze ruimte. De metingen versterken het model maar kunnen het niet volledig overschrijven.",
-          "artificial_lights": "Selecteer lampen die deze sensoren merkbaar beïnvloeden. Wanneer een geselecteerde lamp aan staat, worden binnensensoren genegeerd zodat kunstlicht niet als daglicht wordt gezien."
+        "reconfigure": {
+          "title": "Kamer opnieuw configureren",
+          "description": "Werk de kamer, lokale sensoren en beglaasde buitenopeningen bij.",
+          "data": {
+            "room_name": "Kamernaam",
+            "floor_area_m2": "Vloeroppervlak (m²)",
+            "area_id": "Home Assistant-ruimte",
+            "opening_count": "Beglaasde buitenopeningen",
+            "indoor_lux_sensors": "Binnenlichtsensoren",
+            "artificial_light_entities": "Kunstlicht dat deze sensoren beïnvloedt"
+          },
+          "sections": {
+            "room_model": {
+              "name": "Kamermodel",
+              "description": "Stel in hoe sterk buitenlicht en lokale luxsensoren deze kamer beïnvloeden.",
+              "data": {
+                "daylight_utilisation": "Daglichtbenutting",
+                "sensor_correction_strength": "Correctiesterkte van binnensensoren"
+              },
+              "data_description": {
+                "daylight_utilisation": "Schaalt het toegelaten daglicht van buiten naar een voor automatisering bedoelde schatting van de verlichtingssterkte in de kamer.",
+                "sensor_correction_strength": "Bepaalt hoe sterk geldige lokale luxmetingen de gemodelleerde daglichtwaarde bijstellen."
+              }
+            }
+          },
+          "data_description": {
+            "room_name": "Een gebruiksvriendelijke naam voor de kamer. Hernoemen verandert de identiteit van de kamer niet.",
+            "floor_area_m2": "Geschat vloeroppervlak dat wordt gebruikt om buitenlicht en overgedragen daglicht te schalen.",
+            "area_id": "Optionele Home Assistant-ruimte die als voorgestelde ruimte voor het kamerapparaat wordt gebruikt.",
+            "opening_count": "Aantal beglaasde buitenvlakken dat rechtstreeks daglicht van buiten binnenlaat. Gebruik 0 voor binnenkamers.",
+            "indoor_lux_sensors": "Optionele lokale lichtsensoren die alleen worden gebruikt om deze kamer na netwerkoverdracht te corrigeren.",
+            "artificial_light_entities": "Lampen of schakelaars waarvan een actieve of niet-beschikbare status de correctie door binnensensoren onderdrukt."
+          }
+        },
+        "opening": {
+          "title": "Buitenopening {number} van {total}",
+          "description": "Kies hoe dit beglaasde vlak is gemonteerd.",
+          "data": {
+            "type": "Type opening"
+          },
+          "data_description": {
+            "type": "Kies de geometrie die dit beglaasde buitenvlak het beste beschrijft."
+          }
+        },
+        "opening_details": {
+          "title": "Buitenopening {number} van {total}",
+          "description": "Configureer de beglaasde afmetingen en de naar buiten gerichte oriëntatie. Azimut wordt met de klok mee vanaf het noorden gemeten (0° noord, 90° oost, 180° zuid, 270° west).",
+          "data": {
+            "name": "Naam van opening",
+            "width_m": "Breedte (m)",
+            "height_m": "Hoogte (m)",
+            "length_m": "Lengte (m)",
+            "roof_pitch_deg": "Dakhelling / helling van opening (°)",
+            "azimuth_deg": "Naar buiten gerichte richting / azimut (°)",
+            "tilt_deg": "Helling ten opzichte van horizontaal (°)",
+            "cover_entity": "Jaloezie / gordijn",
+            "transmission": "Lichttransmissie van beglazing"
+          },
+          "data_description": {
+            "name": "Een gebruiksvriendelijke diagnostische naam voor deze beglaasde opening.",
+            "width_m": "Beglaasde breedte in meter.",
+            "height_m": "Beglaasde hoogte in meter.",
+            "length_m": "Beglaasde lengte in meter voor een daklicht.",
+            "roof_pitch_deg": "Helling ten opzichte van horizontaal. 0° is vlak en naar de hemel gericht; 90° is verticaal.",
+            "azimuth_deg": "Naar buiten gerichte kompasrichting, met de klok mee gemeten vanaf het noorden.",
+            "tilt_deg": "Aangepaste vlakhelling ten opzichte van horizontaal. 0° wijst naar de hemel; 90° is verticaal.",
+            "cover_entity": "Optionele afdekking die deze opening regelt. Een onbekende of niet-beschikbare status wordt als gesloten behandeld.",
+            "transmission": "Aandeel invallend daglicht dat door de beglazing wordt doorgelaten voordat een afdekking het vermindert."
+          }
         }
+      },
+      "error": {
+        "name_required": "Voer een naam in."
+      },
+      "entry_type": "Kamer"
+    },
+    "connection": {
+      "title": "Verbinding",
+      "step": {
+        "user": {
+          "title": "Kamerverbinding toevoegen",
+          "description": "Maak een fysieke opening waardoor daglicht tussen twee geconfigureerde kamers kan doorgaan. Meerdere verbindingen tussen dezelfde kamers zijn toegestaan.",
+          "data": {
+            "connection_name": "Naam van verbinding (optioneel)",
+            "room_a": "Kamer A",
+            "room_b": "Kamer B",
+            "connection_type": "Type verbinding"
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Overdrachtsmodel",
+              "description": "Bepaalt hoe efficiënt daglicht door deze opening gaat.",
+              "data": {
+                "transfer_efficiency": "Overdrachtsefficiëntie"
+              },
+              "data_description": {
+                "transfer_efficiency": "Schaalt de daglichtoverdracht door deze opening nadat oppervlak en transmissie in geopende toestand zijn toegepast."
+              }
+            }
+          },
+          "data_description": {
+            "connection_name": "Optionele gebruiksvriendelijke naam. Laat leeg om automatisch de namen van beide kamers te gebruiken.",
+            "room_a": "Eén kamer aan deze fysieke opening.",
+            "room_b": "De kamer aan de andere kant van de opening.",
+            "connection_type": "Kies de geometrie die deze binnenopening het beste beschrijft."
+          }
+        },
+        "reconfigure": {
+          "title": "Kamerverbinding opnieuw configureren",
+          "description": "Werk de kamers, het type opening of het overdrachtsmodel bij.",
+          "data": {
+            "connection_name": "Naam van verbinding (optioneel)",
+            "room_a": "Kamer A",
+            "room_b": "Kamer B",
+            "connection_type": "Type verbinding"
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Overdrachtsmodel",
+              "description": "Bepaalt hoe efficiënt daglicht door deze opening gaat.",
+              "data": {
+                "transfer_efficiency": "Overdrachtsefficiëntie"
+              },
+              "data_description": {
+                "transfer_efficiency": "Schaalt de daglichtoverdracht door deze opening nadat oppervlak en transmissie in geopende toestand zijn toegepast."
+              }
+            }
+          },
+          "data_description": {
+            "connection_name": "Optionele gebruiksvriendelijke naam. Laat leeg om automatisch de namen van beide kamers te gebruiken.",
+            "room_a": "Eén kamer aan deze fysieke opening.",
+            "room_b": "De kamer aan de andere kant van de opening.",
+            "connection_type": "Kies de geometrie die deze binnenopening het beste beschrijft."
+          }
+        },
+        "connection_details": {
+          "title": "Details van verbinding",
+          "description": "Een statusentiteit is optioneel. Zonder statusentiteit wordt de opening als permanent open beschouwd. Niet-beschikbare statusentiteiten worden als gesloten behandeld.",
+          "data": {
+            "width_m": "Breedte van opening (m)",
+            "height_m": "Hoogte van opening (m)",
+            "length_m": "Lengte van opening (m)",
+            "state_entity": "Statusentiteit deur / opening",
+            "invert_state": "Status omkeren",
+            "closed_transmission": "Transmissie wanneer gesloten"
+          },
+          "data_description": {
+            "width_m": "Breedte van de opening in meter.",
+            "height_m": "Hoogte van de opening in meter.",
+            "length_m": "Geschatte lengte van de vloeropening in meter voor een trappenhuis.",
+            "state_entity": "Optionele binaire sensor, input boolean of afdekking die aangeeft of de opening open is.",
+            "invert_state": "Keert de bekende open/gesloten-betekenis om. Onbekende of niet-beschikbare statussen blijven als gesloten gelden.",
+            "closed_transmission": "Aandeel daglicht dat kan passeren terwijl de verbinding gesloten is, nuttig voor beglaasde binnendeuren."
+          }
+        }
+      },
+      "error": {
+        "same_room": "Kamer A en kamer B moeten verschillende kamers zijn."
+      },
+      "abort": {
+        "need_two_rooms": "Configureer minstens twee kamers voordat je een verbinding toevoegt."
+      },
+      "entry_type": "Kamerverbinding"
+    }
+  },
+  "selector": {
+    "opening_type": {
+      "options": {
+        "wall": "Wandraam / beglaasde buitendeur",
+        "rooflight": "Daklicht / dakraam",
+        "custom": "Aangepast beglaasd vlak"
+      }
+    },
+    "connection_type": {
+      "options": {
+        "door": "Deur / deuropening",
+        "archway": "Open doorgang",
+        "stairwell": "Trappenhuis",
+        "custom": "Aangepaste opening"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "estimated_daylight": {
+        "name": "Geschat daglicht"
+      },
+      "native_daylight": {
+        "name": "Eigen daglicht"
+      },
+      "transferred_daylight": {
+        "name": "Overgedragen daglicht"
+      },
+      "indoor_sensor_median": {
+        "name": "Mediaan binnensensoren"
+      },
+      "indoor_sensor_adjustment": {
+        "name": "Correctie binnensensoren"
+      },
+      "effective_daylight_ratio": {
+        "name": "Effectieve daglichtverhouding"
       }
     }
   }

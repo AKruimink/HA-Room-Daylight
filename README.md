@@ -353,10 +353,16 @@ custom_components/room_daylight/
 ├── const.py
 ├── manifest.json
 └── translations/
-    └── en.json
+    ├── de.json
+    ├── en.json
+    ├── es.json
+    ├── fr.json
+    └── nl.json
 ```
 
 `calculation.py`, `network.py` and `models.py` deliberately have no Home Assistant imports. The daylight maths can therefore be unit-tested independently from Home Assistant's framework.
+
+The maintained configuration and entity translations are English (`en`), German (`de`), Spanish (`es`), French (`fr`) and Dutch (`nl`). English is the canonical translation contract; maintained locale files contain the same keys and placeholders so new room, connection and exterior-opening UI is available consistently in every supported language.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the design invariants and lifecycle details.
 

@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "custom_components" / "room_daylight"
+COMPLETE_TRANSLATION_LOCALES = {"en", "de", "es", "fr", "nl"}
 
 
 def _json(path: Path) -> dict:
@@ -80,14 +81,19 @@ def test_subentry_translations_have_required_entry_types() -> None:
     )
 
 
-def test_every_translation_matches_english_schema_and_placeholders() -> None:
-    """All shipped locales expose the same complete translation contract."""
+def test_supported_translations_match_english_schema_and_placeholders() -> None:
+    """Locales maintained by this project expose the complete translation contract."""
 
     translations_dir = INTEGRATION / "translations"
     english = _json(translations_dir / "en.json")
     english_paths = _leaf_paths(english)
 
-    for path in sorted(translations_dir.glob("*.json")):
+    assert COMPLETE_TRANSLATION_LOCALES <= {
+        path.stem for path in translations_dir.glob("*.json")
+    }
+
+    for locale in sorted(COMPLETE_TRANSLATION_LOCALES):
+        path = translations_dir / f"{locale}.json"
         translation = _json(path)
         assert "title" not in translation.get("config", {}), path.name
         assert _leaf_paths(translation) == english_paths, path.name
@@ -97,6 +103,36 @@ def test_every_translation_matches_english_schema_and_placeholders() -> None:
             assert _placeholders(value) == _placeholders(
                 _string_at(english, key_path)
             ), f"{path.name}: {'.'.join(key_path)}"
+
+
+def test_additional_translation_files_remain_hassfest_compatible() -> None:
+    """Allow community locales to be partial while validating the strings they ship.
+
+    Home Assistant loads English first and uses it as the fallback for missing keys in
+    another locale. Requiring every community translation to be complete made the
+    package tests stricter than Home Assistant and caused otherwise valid partial
+    translations to fail CI.
+    """
+
+    translations_dir = INTEGRATION / "translations"
+    english = _json(translations_dir / "en.json")
+    english_paths = _leaf_paths(english)
+
+    for path in sorted(translations_dir.glob("*.json")):
+        if path.stem in COMPLETE_TRANSLATION_LOCALES:
+            continue
+
+        translation = _json(path)
+        for key_path in _leaf_paths(translation):
+            value = _string_at(translation, key_path)
+            assert value.strip(), f"{path.name}: {'.'.join(key_path)}"
+            if key_path in english_paths:
+                assert _placeholders(value) == _placeholders(
+                    _string_at(english, key_path)
+                ), f"{path.name}: {'.'.join(key_path)}"
+
+        for subentry in translation.get("config_subentries", {}).values():
+            assert "entry_type" in subentry, path.name
 
 
 def test_config_entry_runtime_data_alias_is_an_explicit_type_alias() -> None:
