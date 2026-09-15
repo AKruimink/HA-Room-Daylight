@@ -10,7 +10,7 @@ from .coordinator import RoomDaylightCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
-RoomDaylightConfigEntry = ConfigEntry[RoomDaylightCoordinator]
+type RoomDaylightConfigEntry = ConfigEntry[RoomDaylightCoordinator]
 
 
 async def _async_update_listener(

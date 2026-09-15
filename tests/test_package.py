@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +13,34 @@ INTEGRATION = ROOT / "custom_components" / "room_daylight"
 
 def _json(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def _leaf_paths(value: object, prefix: tuple[str, ...] = ()) -> set[tuple[str, ...]]:
+    """Return paths to translated leaf strings."""
+
+    if isinstance(value, dict):
+        paths: set[tuple[str, ...]] = set()
+        for key, child in value.items():
+            paths.update(_leaf_paths(child, (*prefix, key)))
+        return paths
+    return {prefix}
+
+
+def _string_at(value: dict, path: tuple[str, ...]) -> str:
+    """Return the string value at a translation path."""
+
+    current: object = value
+    for key in path:
+        assert isinstance(current, dict)
+        current = current[key]
+    assert isinstance(current, str)
+    return current
+
+
+def _placeholders(value: str) -> set[str]:
+    """Return format placeholders used by a translation string."""
+
+    return set(re.findall(r"\{([A-Za-z0-9_]+)\}", value))
 
 
 def test_manifest_declares_clean_single_entry_release() -> None:
@@ -39,6 +68,43 @@ def test_custom_integration_uses_direct_translation_file() -> None:
     assert not (INTEGRATION / "strings.json").exists()
     assert {"room", "connection"} <= set(translations["config_subentries"])
     assert {"opening_type", "connection_type"} <= set(translations["selector"])
+
+
+def test_subentry_translations_have_required_entry_types() -> None:
+    translations = _json(INTEGRATION / "translations" / "en.json")
+
+    assert translations["config_subentries"]["room"]["entry_type"] == "Room"
+    assert (
+        translations["config_subentries"]["connection"]["entry_type"]
+        == "Room connection"
+    )
+
+
+def test_every_translation_matches_english_schema_and_placeholders() -> None:
+    """All shipped locales expose the same complete translation contract."""
+
+    translations_dir = INTEGRATION / "translations"
+    english = _json(translations_dir / "en.json")
+    english_paths = _leaf_paths(english)
+
+    for path in sorted(translations_dir.glob("*.json")):
+        translation = _json(path)
+        assert "title" not in translation.get("config", {}), path.name
+        assert _leaf_paths(translation) == english_paths, path.name
+        for key_path in english_paths:
+            value = _string_at(translation, key_path)
+            assert value.strip(), f"{path.name}: {'.'.join(key_path)}"
+            assert _placeholders(value) == _placeholders(
+                _string_at(english, key_path)
+            ), f"{path.name}: {'.'.join(key_path)}"
+
+
+def test_config_entry_runtime_data_alias_is_an_explicit_type_alias() -> None:
+    source = (INTEGRATION / "__init__.py").read_text()
+    assert (
+        "type RoomDaylightConfigEntry = "
+        "ConfigEntry[RoomDaylightCoordinator]"
+    ) in source
 
 
 def test_every_room_sensor_has_an_english_entity_translation() -> None:

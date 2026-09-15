@@ -179,7 +179,8 @@
       },
       "error": {
         "name_required": "Enter a name."
-      }
+      },
+      "entry_type": "Room"
     },
     "connection": {
       "title": "Connection",
@@ -266,7 +267,8 @@
       },
       "abort": {
         "need_two_rooms": "Configure at least two rooms before adding a connection."
-      }
+      },
+      "entry_type": "Room connection"
     }
   },
   "selector": {
