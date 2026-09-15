@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://brands.home-assistant.io/room_daylight/logo.png" alt="Room Daylight logo" width="320">
+  <img src="images/icon.png" alt="Room Daylight logo" width="320">
 </p>
 
 # ☀️ Room Daylight — Natural-light estimation for Home Assistant
