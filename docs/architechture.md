@@ -34,6 +34,10 @@ Config-flow and subentry-flow success paths use update-only helpers and do not e
 
 At setup, the coordinator reparses the complete immutable configuration snapshot. A reload after any structural change is deliberately preferred over trying to mutate a live graph in several places.
 
+The parent config entry is valid with **zero room and zero connection subentries**. Initial setup therefore finishes after the global environment is created and does not chain directly into a room subentry flow. Rooms and connections are added later from the integration page.
+
+The sensor platform is forwarded only while at least one room exists. With an empty graph there are no entities to create, so avoiding the platform setup keeps the parent integration lightweight. Adding the first room or removing the last room updates the parent entry and the normal reload listener transitions the platform in or out automatically.
+
 ## 3. Layer boundaries
 
 ### `models.py`

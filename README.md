@@ -12,6 +12,8 @@ Rather than using sunrise/sunset alone, Room Daylight combines your outdoor illu
 
 Room Daylight does not control your lights. It provides daylight sensors and diagnostics that your own Home Assistant automations can use however you want.
 
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AKruimink&repository=HA-Room-Daylight&category=integration)
+
 > [!NOTE]
 > Room Daylight is an automation-oriented daylight model. It is designed to produce a stable, explainable signal for Home Assistant, not to replace architectural daylight simulation or a calibrated lux survey.
 
@@ -153,7 +155,9 @@ During initial setup, choose:
 | **Sun entity** | Home Assistant sun entity, normally `sun.sun`. |
 | **Model defaults** | Starting values applied when rooms, glazing and connections are created. |
 
-After setup, open the Room Daylight integration entry to add rooms and connections.
+Completing this step creates the Room Daylight integration itself. **You do not need to create a room or connection during initial setup.** An empty Room Daylight entry is valid and can stay that way until you are ready to build the model.
+
+After setup, open the Room Daylight integration entry whenever you want to add, reconfigure or remove rooms and connections. Add rooms first; connections can then be created between any two configured rooms.
 
 ### Rooms
 

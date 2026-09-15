@@ -15,8 +15,6 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     ConfigSubentry,
     ConfigSubentryFlow,
-    FlowType,
-    SubentryFlowContext,
     SubentryFlowResult,
 )
 from homeassistant.core import callback
@@ -264,21 +262,6 @@ class RoomDaylightConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reconfigure",
             data_schema=_global_schema(dict(entry.data)),
         )
-
-    async def async_on_create_entry(
-        self, result: ConfigFlowResult
-    ) -> ConfigFlowResult:
-        """Open the first room flow immediately after initial setup."""
-
-        subentry_result = await self.hass.config_entries.subentries.async_init(
-            (result["result"].entry_id, SUBENTRY_TYPE_ROOM),
-            context=SubentryFlowContext(source=SOURCE_USER),
-        )
-        result["next_flow"] = (
-            FlowType.CONFIG_SUBENTRIES_FLOW,
-            subentry_result["flow_id"],
-        )
-        return result
 
 
 class RoomSubentryFlow(ConfigSubentryFlow):
