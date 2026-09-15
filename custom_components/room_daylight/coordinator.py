@@ -9,16 +9,7 @@ from typing import Any
 
 from homeassistant.components.cover import ATTR_CURRENT_POSITION
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    STATE_CLOSED,
-    STATE_CLOSING,
-    STATE_OFF,
-    STATE_ON,
-    STATE_OPEN,
-    STATE_OPENING,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-)
+from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, HomeAssistant, State, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -41,8 +32,19 @@ from .const import (
     SUBENTRY_TYPE_CONNECTION,
     SUBENTRY_TYPE_ROOM,
 )
-from .models import ConnectionDefinition, RoomDefinition, RoomSnapshot
+from .models import (
+    ConnectionDefinition,
+    ExteriorOpening,
+    RoomDefinition,
+    RoomSnapshot,
+)
 from .network import NetworkConnection, solve_room_network
+from .openness import (
+    ResolvedOpenness,
+    assumed_openness,
+    resolve_binary_openness,
+    resolve_cover_openness,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,51 +71,6 @@ def _state_lux(state: State | None) -> float | None:
     if not math.isfinite(value) or value < 0.0:
         return None
     return value
-
-
-def _cover_openness(state: State | None) -> float:
-    """Return cover openness in the range 0..1, failing closed if unknown."""
-
-    if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-        return 0.0
-
-    position = state.attributes.get(ATTR_CURRENT_POSITION)
-    if position is not None:
-        return clamp(_safe_float(position) / 100.0, 0.0, 1.0)
-
-    if state.state in (STATE_OPEN, STATE_OPENING):
-        return 1.0
-    if state.state in (STATE_CLOSED, STATE_CLOSING):
-        return 0.0
-    return 0.0
-
-
-def _connection_openness(state: State | None, *, invert: bool) -> tuple[float, str]:
-    """Return connection openness and an explainable state description."""
-
-    # Unknown state always fails closed.  Inversion is intentionally *not*
-    # applied to this branch, otherwise an unavailable inverted contact would
-    # incorrectly become fully open.
-    if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-        return 0.0, "unavailable"
-
-    if state.domain == "cover":
-        openness = _cover_openness(state)
-        description = f"{round(openness * 100)}% open"
-    elif state.state == STATE_ON:
-        openness = 1.0
-        description = "open"
-    elif state.state == STATE_OFF:
-        openness = 0.0
-        description = "closed"
-    else:
-        openness = 0.0
-        description = "unavailable"
-
-    if invert:
-        openness = 1.0 - openness
-        description = f"inverted {description}"
-    return openness, description
 
 
 class RoomDaylightCoordinator(DataUpdateCoordinator[dict[str, RoomSnapshot]]):
@@ -281,12 +238,8 @@ class RoomDaylightCoordinator(DataUpdateCoordinator[dict[str, RoomSnapshot]]):
         native_lux = {}
         floor_areas = {}
         for room_id, room in self.rooms.items():
-            cover_openness = {
-                opening.opening_id: (
-                    _cover_openness(self.hass.states.get(opening.cover_entity))
-                    if opening.cover_entity
-                    else 1.0
-                )
+            cover_states = {
+                opening.opening_id: self._opening_openness(opening)
                 for opening in room.openings
             }
             result = estimate_native_daylight(
@@ -295,7 +248,18 @@ class RoomDaylightCoordinator(DataUpdateCoordinator[dict[str, RoomSnapshot]]):
                 sun_azimuth_deg=sun_azimuth,
                 sun_elevation_deg=sun_elevation,
                 diffuse_fraction=self._diffuse_fraction,
-                cover_openness=cover_openness,
+                cover_openness={
+                    opening_id: state.openness
+                    for opening_id, state in cover_states.items()
+                },
+                cover_state_descriptions={
+                    opening_id: state.description
+                    for opening_id, state in cover_states.items()
+                },
+                cover_state_sources={
+                    opening_id: state.source
+                    for opening_id, state in cover_states.items()
+                },
             )
             native_results[room_id] = result
             native_lux[room_id] = result.lux
@@ -351,22 +315,48 @@ class RoomDaylightCoordinator(DataUpdateCoordinator[dict[str, RoomSnapshot]]):
 
         return snapshots
 
+    def _opening_openness(self, opening: ExteriorOpening) -> ResolvedOpenness:
+        """Resolve an exterior opening's blind/curtain openness."""
+
+        if opening.cover_entity is None:
+            return assumed_openness(opening.assumed_state)
+
+        state = self.hass.states.get(opening.cover_entity)
+        return resolve_cover_openness(
+            state.state if state is not None else None,
+            position=(
+                state.attributes.get(ATTR_CURRENT_POSITION)
+                if state is not None
+                else None
+            ),
+            assumed_state=opening.assumed_state,
+        )
+
     def _runtime_connection(
         self, connection: ConnectionDefinition
     ) -> NetworkConnection:
         """Resolve a connection's current openness and effective transmission."""
 
         if connection.state_entity is None:
-            openness = 1.0
-            state_description = "always open"
+            resolved = assumed_openness(connection.assumed_state)
         else:
-            openness, state_description = _connection_openness(
-                self.hass.states.get(connection.state_entity),
-                invert=connection.invert_state,
-            )
+            state = self.hass.states.get(connection.state_entity)
+            if state is not None and state.domain == "cover":
+                resolved = resolve_cover_openness(
+                    state.state,
+                    position=state.attributes.get(ATTR_CURRENT_POSITION),
+                    assumed_state=connection.assumed_state,
+                    invert=connection.invert_state,
+                )
+            else:
+                resolved = resolve_binary_openness(
+                    state.state if state is not None else None,
+                    assumed_state=connection.assumed_state,
+                    invert=connection.invert_state,
+                )
 
         closed = clamp(connection.closed_transmission, 0.0, 1.0)
-        transmission = closed + (openness * (1.0 - closed))
+        transmission = closed + (resolved.openness * (1.0 - closed))
         return NetworkConnection(
             connection_id=connection.connection_id,
             name=connection.name,
@@ -376,7 +366,9 @@ class RoomDaylightCoordinator(DataUpdateCoordinator[dict[str, RoomSnapshot]]):
             transmission=transmission,
             transfer_efficiency=connection.transfer_efficiency,
             state_entity=connection.state_entity,
-            state_description=state_description,
+            assumed_state=connection.assumed_state.value,
+            state_description=resolved.description,
+            state_source=resolved.source,
         )
 
     def _sensor_correction_blocked(self, room: RoomDefinition) -> bool:

@@ -167,6 +167,7 @@
             "azimuth_deg": "Direction extérieure / azimut (°)",
             "tilt_deg": "Inclinaison par rapport à l’horizontale (°)",
             "cover_entity": "Store / rideau",
+            "assumed_state": "État supposé du store",
             "transmission": "Transmission du vitrage"
           },
           "data_description": {
@@ -177,7 +178,8 @@
             "roof_pitch_deg": "Inclinaison par rapport à l’horizontale. 0° correspond à une surface plane orientée vers le ciel ; 90° à une surface verticale.",
             "azimuth_deg": "Direction extérieure mesurée dans le sens horaire à partir du nord.",
             "tilt_deg": "Inclinaison personnalisée du plan par rapport à l’horizontale. 0° fait face au ciel ; 90° est vertical.",
-            "cover_entity": "Protection facultative contrôlant cette ouverture. Un état inconnu ou indisponible est considéré comme fermé.",
+            "cover_entity": "Protection facultative contrôlant cette ouverture. Si son état ne peut pas être utilisé, Room Daylight applique l’état supposé configuré du store.",
+            "assumed_state": "État utilisé lorsqu’aucune entité de store/rideau n’est configurée, ou lorsque la protection configurée est indisponible ou inconnue.",
             "transmission": "Fraction de la lumière naturelle incidente transmise par le vitrage avant toute réduction due à une protection."
           }
         }
@@ -252,12 +254,13 @@
         },
         "connection_details": {
           "title": "Détails de la connexion",
-          "description": "Une entité d’état est facultative. Sans entité, l’ouverture est considérée comme ouverte en permanence. Une entité d’état indisponible est considérée comme fermée.",
+          "description": "Une entité d’état est facultative. L’état supposé de la connexion est utilisé lorsqu’aucun état d’entité exploitable n’est disponible.",
           "data": {
             "width_m": "Largeur de l’ouverture (m)",
             "height_m": "Hauteur de l’ouverture (m)",
             "length_m": "Longueur de l’ouverture (m)",
             "state_entity": "Entité d’état de la porte / ouverture",
+            "assumed_state": "État supposé de la connexion",
             "invert_state": "Inverser l’état",
             "closed_transmission": "Transmission à l’état fermé"
           },
@@ -265,8 +268,9 @@
             "width_m": "Largeur de l’ouverture en mètres.",
             "height_m": "Hauteur de l’ouverture en mètres.",
             "length_m": "Longueur approximative de l’ouverture au sol, en mètres, pour une cage d’escalier.",
-            "state_entity": "Capteur binaire, booléen d’entrée ou protection facultatif indiquant si l’ouverture est ouverte.",
-            "invert_state": "Inverse la signification connue ouvert/fermé. Les états inconnus ou indisponibles restent considérés comme fermés.",
+            "state_entity": "Capteur binaire, booléen d’entrée ou protection facultatif indiquant si l’ouverture est ouverte. Un état d’entité exploitable remplace l’hypothèse configurée.",
+            "assumed_state": "État utilisé lorsqu’aucune entité de porte/ouverture n’est configurée, ou lorsque l’entité configurée est indisponible ou inconnue.",
+            "invert_state": "Inverse la signification connue ouvert/fermé de l’entité. L’état supposé configuré n’est pas inversé.",
             "closed_transmission": "Fraction de lumière naturelle pouvant traverser lorsque la connexion est fermée, utile pour les portes intérieures vitrées."
           }
         }
@@ -293,6 +297,12 @@
         "archway": "Ouverture sans porte",
         "stairwell": "Cage d’escalier",
         "custom": "Ouverture personnalisée"
+      }
+    },
+    "assumed_state": {
+      "options": {
+        "open": "Ouvert",
+        "closed": "Fermé"
       }
     }
   },

@@ -11,6 +11,7 @@ import math
 from collections.abc import Iterable, Mapping
 from statistics import median
 
+from .const import AssumedState
 from .models import (
     ExteriorOpening,
     NativeDaylightResult,
@@ -118,6 +119,8 @@ def estimate_native_daylight(
     sun_elevation_deg: float,
     diffuse_fraction: float,
     cover_openness: Mapping[str, float] | None = None,
+    cover_state_descriptions: Mapping[str, str] | None = None,
+    cover_state_sources: Mapping[str, str] | None = None,
 ) -> NativeDaylightResult:
     """Estimate daylight admitted directly from outside into ``room``.
 
@@ -132,12 +135,17 @@ def estimate_native_daylight(
         return NativeDaylightResult(lux=0.0)
 
     openness = cover_openness or {}
+    state_descriptions = cover_state_descriptions or {}
+    state_sources = cover_state_sources or {}
     diagnostics: list[OpeningDiagnostic] = []
     raw_total = 0.0
 
     for opening in room.openings:
+        assumed_openness = (
+            1.0 if opening.assumed_state is AssumedState.OPEN else 0.0
+        )
         opening_openness = clamp(
-            float(openness.get(opening.opening_id, 1.0)),
+            float(openness.get(opening.opening_id, assumed_openness)),
             0.0,
             1.0,
         )
@@ -170,6 +178,10 @@ def estimate_native_daylight(
                 cover_openness=opening_openness,
                 effective_transmission=effective_transmission,
                 contribution_lux=contribution,
+                cover_entity=opening.cover_entity,
+                assumed_state=opening.assumed_state.value,
+                state_description=state_descriptions.get(opening.opening_id),
+                state_source=state_sources.get(opening.opening_id),
             )
         )
 
@@ -189,6 +201,10 @@ def estimate_native_daylight(
                 cover_openness=item.cover_openness,
                 effective_transmission=item.effective_transmission,
                 contribution_lux=item.contribution_lux * scale,
+                cover_entity=item.cover_entity,
+                assumed_state=item.assumed_state,
+                state_description=item.state_description,
+                state_source=item.state_source,
             )
             for item in diagnostics
         ]

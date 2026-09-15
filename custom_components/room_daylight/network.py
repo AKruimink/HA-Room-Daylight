@@ -21,7 +21,9 @@ class NetworkConnection:
     transmission: float
     transfer_efficiency: float
     state_entity: str | None = None
+    assumed_state: str | None = None
     state_description: str | None = None
+    state_source: str | None = None
 
     def other_room(self, room_id: str) -> str:
         """Return the room at the opposite end of this connection."""
@@ -185,7 +187,9 @@ def solve_room_network(
                     transfer_weight=weight,
                     contribution_lux=contribution,
                     state_entity=connection.state_entity,
+                    assumed_state=connection.assumed_state,
                     state_description=connection.state_description,
+                    state_source=connection.state_source,
                 )
             )
 

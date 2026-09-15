@@ -167,6 +167,7 @@
             "azimuth_deg": "Naar buiten gerichte richting / azimut (°)",
             "tilt_deg": "Helling ten opzichte van horizontaal (°)",
             "cover_entity": "Jaloezie / gordijn",
+            "assumed_state": "Aangenomen jaloeziestatus",
             "transmission": "Lichttransmissie van beglazing"
           },
           "data_description": {
@@ -177,7 +178,8 @@
             "roof_pitch_deg": "Helling ten opzichte van horizontaal. 0° is vlak en naar de hemel gericht; 90° is verticaal.",
             "azimuth_deg": "Naar buiten gerichte kompasrichting, met de klok mee gemeten vanaf het noorden.",
             "tilt_deg": "Aangepaste vlakhelling ten opzichte van horizontaal. 0° wijst naar de hemel; 90° is verticaal.",
-            "cover_entity": "Optionele afdekking die deze opening regelt. Een onbekende of niet-beschikbare status wordt als gesloten behandeld.",
+            "cover_entity": "Optionele afdekking die deze opening regelt. Wanneer de status niet bruikbaar is, valt Room Daylight terug op de geconfigureerde aangenomen jaloeziestatus.",
+            "assumed_state": "Status die wordt gebruikt wanneer geen jaloezie-/gordijnentiteit is geconfigureerd of wanneer de geconfigureerde afdekking niet beschikbaar of onbekend is.",
             "transmission": "Aandeel invallend daglicht dat door de beglazing wordt doorgelaten voordat een afdekking het vermindert."
           }
         }
@@ -252,12 +254,13 @@
         },
         "connection_details": {
           "title": "Details van verbinding",
-          "description": "Een statusentiteit is optioneel. Zonder statusentiteit wordt de opening als permanent open beschouwd. Niet-beschikbare statusentiteiten worden als gesloten behandeld.",
+          "description": "Een statusentiteit is optioneel. De aangenomen verbindingsstatus wordt gebruikt wanneer geen bruikbare entiteitsstatus beschikbaar is.",
           "data": {
             "width_m": "Breedte van opening (m)",
             "height_m": "Hoogte van opening (m)",
             "length_m": "Lengte van opening (m)",
             "state_entity": "Statusentiteit deur / opening",
+            "assumed_state": "Aangenomen verbindingsstatus",
             "invert_state": "Status omkeren",
             "closed_transmission": "Transmissie wanneer gesloten"
           },
@@ -265,8 +268,9 @@
             "width_m": "Breedte van de opening in meter.",
             "height_m": "Hoogte van de opening in meter.",
             "length_m": "Geschatte lengte van de vloeropening in meter voor een trappenhuis.",
-            "state_entity": "Optionele binaire sensor, input boolean of afdekking die aangeeft of de opening open is.",
-            "invert_state": "Keert de bekende open/gesloten-betekenis om. Onbekende of niet-beschikbare statussen blijven als gesloten gelden.",
+            "state_entity": "Optionele binaire sensor, input boolean of afdekking die aangeeft of de opening open is. Een bruikbare entiteitsstatus overschrijft de geconfigureerde aanname.",
+            "assumed_state": "Status die wordt gebruikt wanneer geen deur-/openingsentiteit is geconfigureerd of wanneer de geconfigureerde entiteit niet beschikbaar of onbekend is.",
+            "invert_state": "Keert de bekende open/gesloten-betekenis van de entiteit om. De geconfigureerde aangenomen status wordt niet omgekeerd.",
             "closed_transmission": "Aandeel daglicht dat kan passeren terwijl de verbinding gesloten is, nuttig voor beglaasde binnendeuren."
           }
         }
@@ -293,6 +297,12 @@
         "archway": "Open doorgang",
         "stairwell": "Trappenhuis",
         "custom": "Aangepaste opening"
+      }
+    },
+    "assumed_state": {
+      "options": {
+        "open": "Open",
+        "closed": "Gesloten"
       }
     }
   },

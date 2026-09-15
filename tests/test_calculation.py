@@ -1,5 +1,6 @@
 """Tests for exterior daylight and local sensor correction."""
 
+from dataclasses import replace
 from math import cos, radians, sin
 
 import pytest
@@ -10,6 +11,7 @@ from custom_components.room_daylight.calculation import (
     estimate_native_daylight,
     sky_view_factor,
 )
+from custom_components.room_daylight.const import AssumedState
 from custom_components.room_daylight.models import ExteriorOpening, RoomDefinition
 
 
@@ -181,3 +183,22 @@ def test_no_valid_sensor_values_leave_model_unchanged() -> None:
     assert result.sensor_median_lux is None
     assert result.estimated_lux == 125.0
     assert result.correction_applied is False
+
+
+def test_assumed_closed_blind_blocks_opening_without_runtime_state() -> None:
+    """The pure calculation honours an opening's configured fallback."""
+
+    opening = replace(
+        _opening(),
+        assumed_state=AssumedState.CLOSED,
+    )
+    result = estimate_native_daylight(
+        _room((opening,)),
+        outdoor_lux=20_000.0,
+        sun_azimuth_deg=180.0,
+        sun_elevation_deg=40.0,
+        diffuse_fraction=0.35,
+    )
+
+    assert result.lux == 0.0
+    assert result.openings[0].cover_openness == 0.0

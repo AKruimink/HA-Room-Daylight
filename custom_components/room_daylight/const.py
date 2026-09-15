@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
+
 DOMAIN = "room_daylight"
 NAME = "Room Daylight"
 
@@ -37,6 +39,7 @@ CONF_TILT = "tilt_deg"
 CONF_ROOF_PITCH = "roof_pitch_deg"
 CONF_COVER_ENTITY = "cover_entity"
 CONF_TRANSMISSION = "transmission"
+CONF_ASSUMED_STATE = "assumed_state"
 
 OPENING_TYPE_WALL = "wall"
 OPENING_TYPE_ROOFLIGHT = "rooflight"
@@ -66,6 +69,33 @@ CONNECTION_TYPES = (
     CONNECTION_TYPE_STAIRWELL,
     CONNECTION_TYPE_CUSTOM,
 )
+
+
+class AssumedState(StrEnum):
+    """Fallback state used when an opening has no usable state entity."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+
+
+ASSUMED_STATES = tuple(state.value for state in AssumedState)
+DEFAULT_OPENING_ASSUMED_STATE = AssumedState.OPEN
+DEFAULT_CONNECTION_ASSUMED_STATES = {
+    CONNECTION_TYPE_DOOR: AssumedState.CLOSED,
+    CONNECTION_TYPE_ARCHWAY: AssumedState.OPEN,
+    CONNECTION_TYPE_STAIRWELL: AssumedState.OPEN,
+    CONNECTION_TYPE_CUSTOM: AssumedState.OPEN,
+}
+
+
+def default_connection_assumed_state(connection_type: str) -> AssumedState:
+    """Return the initial assumed state for a connection type."""
+
+    return DEFAULT_CONNECTION_ASSUMED_STATES.get(
+        connection_type,
+        AssumedState.OPEN,
+    )
+
 
 DEFAULT_SUN_ENTITY = "sun.sun"
 DEFAULT_DIFFUSE_FRACTION = 0.35

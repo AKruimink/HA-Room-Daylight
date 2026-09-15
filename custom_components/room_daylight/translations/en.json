@@ -167,6 +167,7 @@
             "azimuth_deg": "Outward-facing direction / azimuth (°)",
             "tilt_deg": "Tilt from horizontal (°)",
             "cover_entity": "Blind / curtain cover",
+            "assumed_state": "Assumed blind state",
             "transmission": "Glazing transmission"
           },
           "data_description": {
@@ -177,7 +178,8 @@
             "roof_pitch_deg": "Tilt from horizontal. 0° is flat and sky-facing; 90° is vertical.",
             "azimuth_deg": "Outward-facing compass direction measured clockwise from north.",
             "tilt_deg": "Custom plane tilt from horizontal. 0° faces the sky; 90° is vertical.",
-            "cover_entity": "Optional cover controlling this opening. Unknown or unavailable state is treated as closed.",
+            "cover_entity": "Optional cover controlling this opening. When its state cannot be used, Room Daylight falls back to the configured assumed blind state.",
+            "assumed_state": "State used when no blind/curtain entity is configured, or when the configured cover is unavailable or unknown.",
             "transmission": "Fraction of incident daylight transmitted through the glazing before any cover reduction."
           }
         }
@@ -252,12 +254,13 @@
         },
         "connection_details": {
           "title": "Connection details",
-          "description": "A state entity is optional. Without one the opening is treated as permanently open. Unavailable state entities fail closed.",
+          "description": "A state entity is optional. The assumed connection state is used whenever no usable entity state is available.",
           "data": {
             "width_m": "Opening width (m)",
             "height_m": "Opening height (m)",
             "length_m": "Opening length (m)",
             "state_entity": "Door / opening state entity",
+            "assumed_state": "Assumed connection state",
             "invert_state": "Invert state",
             "closed_transmission": "Transmission when closed"
           },
@@ -265,8 +268,9 @@
             "width_m": "Opening width in metres.",
             "height_m": "Opening height in metres.",
             "length_m": "Approximate floor-opening length in metres for a stairwell.",
-            "state_entity": "Optional binary sensor, input boolean or cover describing whether the opening is open.",
-            "invert_state": "Reverse known open/closed semantics. Unknown or unavailable states still fail closed.",
+            "state_entity": "Optional binary sensor, input boolean or cover describing whether the opening is open. A usable entity state overrides the configured assumption.",
+            "assumed_state": "State used when no door/opening entity is configured, or when the configured entity is unavailable or unknown.",
+            "invert_state": "Reverse known entity open/closed semantics. The configured assumed state is not inverted.",
             "closed_transmission": "Fraction of daylight that may pass while the connection is closed, useful for glazed internal doors."
           }
         }
@@ -293,6 +297,12 @@
         "archway": "Open archway",
         "stairwell": "Stairwell",
         "custom": "Custom opening"
+      }
+    },
+    "assumed_state": {
+      "options": {
+        "open": "Open",
+        "closed": "Closed"
       }
     }
   },

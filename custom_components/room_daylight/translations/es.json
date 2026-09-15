@@ -167,6 +167,7 @@
             "azimuth_deg": "Dirección exterior / azimut (°)",
             "tilt_deg": "Inclinación respecto a la horizontal (°)",
             "cover_entity": "Persiana / cortina",
+            "assumed_state": "Estado supuesto de la persiana",
             "transmission": "Transmisión del acristalamiento"
           },
           "data_description": {
@@ -177,7 +178,8 @@
             "roof_pitch_deg": "Inclinación respecto a la horizontal. 0° es plana y orientada al cielo; 90° es vertical.",
             "azimuth_deg": "Dirección de brújula hacia el exterior medida en sentido horario desde el norte.",
             "tilt_deg": "Inclinación personalizada del plano respecto a la horizontal. 0° mira al cielo; 90° es vertical.",
-            "cover_entity": "Cubierta opcional que controla esta abertura. Un estado desconocido o no disponible se considera cerrado.",
+            "cover_entity": "Cubierta opcional que controla esta abertura. Si su estado no se puede usar, Room Daylight recurre al estado supuesto configurado para la persiana.",
+            "assumed_state": "Estado usado cuando no hay una entidad de persiana/cortina configurada o cuando la cubierta configurada no está disponible o tiene un estado desconocido.",
             "transmission": "Fracción de la luz natural incidente transmitida por el acristalamiento antes de cualquier reducción por la cubierta."
           }
         }
@@ -252,12 +254,13 @@
         },
         "connection_details": {
           "title": "Detalles de la conexión",
-          "description": "La entidad de estado es opcional. Sin ella, la abertura se considera permanentemente abierta. Las entidades de estado no disponibles se consideran cerradas.",
+          "description": "La entidad de estado es opcional. Se usa el estado supuesto de la conexión cuando no hay disponible un estado de entidad utilizable.",
           "data": {
             "width_m": "Anchura de la abertura (m)",
             "height_m": "Altura de la abertura (m)",
             "length_m": "Longitud de la abertura (m)",
             "state_entity": "Entidad de estado de puerta / abertura",
+            "assumed_state": "Estado supuesto de la conexión",
             "invert_state": "Invertir estado",
             "closed_transmission": "Transmisión cuando está cerrada"
           },
@@ -265,8 +268,9 @@
             "width_m": "Anchura de la abertura en metros.",
             "height_m": "Altura de la abertura en metros.",
             "length_m": "Longitud aproximada de la abertura del forjado en metros para una escalera.",
-            "state_entity": "Sensor binario, booleano de entrada o cubierta opcional que indica si la abertura está abierta.",
-            "invert_state": "Invierte la semántica conocida de abierto/cerrado. Los estados desconocidos o no disponibles siguen considerándose cerrados.",
+            "state_entity": "Sensor binario, booleano de entrada o cubierta opcional que indica si la abertura está abierta. Un estado de entidad utilizable prevalece sobre la suposición configurada.",
+            "assumed_state": "Estado usado cuando no hay una entidad de puerta/abertura configurada o cuando la entidad configurada no está disponible o tiene un estado desconocido.",
+            "invert_state": "Invierte la semántica conocida de abierto/cerrado de la entidad. El estado supuesto configurado no se invierte.",
             "closed_transmission": "Fracción de luz natural que puede pasar cuando la conexión está cerrada, útil para puertas interiores acristaladas."
           }
         }
@@ -293,6 +297,12 @@
         "archway": "Paso abierto",
         "stairwell": "Hueco de escalera",
         "custom": "Abertura personalizada"
+      }
+    },
+    "assumed_state": {
+      "options": {
+        "open": "Abierto",
+        "closed": "Cerrado"
       }
     }
   },

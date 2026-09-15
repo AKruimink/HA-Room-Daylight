@@ -11,8 +11,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .const import (
+    AssumedState,
     CONF_AREA_ID,
     CONF_ARTIFICIAL_LIGHT_ENTITIES,
+    CONF_ASSUMED_STATE,
     CONF_AZIMUTH,
     CONF_CLOSED_TRANSMISSION,
     CONF_CONNECTION_MODEL,
@@ -40,8 +42,10 @@ from .const import (
     CONF_TRANSMISSION,
     CONF_WIDTH,
     DEFAULT_DAYLIGHT_UTILISATION,
+    DEFAULT_OPENING_ASSUMED_STATE,
     DEFAULT_SENSOR_CORRECTION_STRENGTH,
     DEFAULT_TRANSFER_EFFICIENCY,
+    default_connection_assumed_state,
 )
 
 
@@ -52,6 +56,18 @@ def _as_optional_str(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _as_assumed_state(
+    value: Any,
+    default: AssumedState,
+) -> AssumedState:
+    """Return a valid assumed state, falling back defensively."""
+
+    try:
+        return AssumedState(str(value))
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +83,7 @@ class ExteriorOpening:
     tilt_deg: float
     transmission: float
     cover_entity: str | None = None
+    assumed_state: AssumedState = DEFAULT_OPENING_ASSUMED_STATE
 
     @property
     def area_m2(self) -> float:
@@ -93,6 +110,10 @@ class ExteriorOpening:
             tilt_deg=float(data[CONF_TILT]),
             transmission=float(data[CONF_TRANSMISSION]),
             cover_entity=_as_optional_str(data.get(CONF_COVER_ENTITY)),
+            assumed_state=_as_assumed_state(
+                data.get(CONF_ASSUMED_STATE),
+                DEFAULT_OPENING_ASSUMED_STATE,
+            ),
         )
 
 
@@ -160,6 +181,7 @@ class ConnectionDefinition:
     room_b: str
     area_m2: float
     state_entity: str | None = None
+    assumed_state: AssumedState = AssumedState.OPEN
     invert_state: bool = False
     closed_transmission: float = 0.0
     transfer_efficiency: float = DEFAULT_TRANSFER_EFFICIENCY
@@ -177,14 +199,19 @@ class ConnectionDefinition:
         width = float(data[CONF_WIDTH])
         second_dimension = float(data.get(CONF_HEIGHT, data.get(CONF_LENGTH, 0.0)))
         connection_model = data.get(CONF_CONNECTION_MODEL, {})
+        connection_type = str(data[CONF_CONNECTION_TYPE])
         return cls(
             connection_id=connection_id,
             name=str(data[CONF_CONNECTION_NAME]),
-            connection_type=str(data[CONF_CONNECTION_TYPE]),
+            connection_type=connection_type,
             room_a=str(data[CONF_ROOM_A]),
             room_b=str(data[CONF_ROOM_B]),
             area_m2=width * second_dimension,
             state_entity=_as_optional_str(data.get(CONF_STATE_ENTITY)),
+            assumed_state=_as_assumed_state(
+                data.get(CONF_ASSUMED_STATE),
+                default_connection_assumed_state(connection_type),
+            ),
             invert_state=bool(data.get(CONF_INVERT_STATE, False)),
             closed_transmission=float(data.get(CONF_CLOSED_TRANSMISSION, 0.0)),
             transfer_efficiency=float(
@@ -208,6 +235,10 @@ class OpeningDiagnostic:
     cover_openness: float
     effective_transmission: float
     contribution_lux: float
+    cover_entity: str | None = None
+    assumed_state: str | None = None
+    state_description: str | None = None
+    state_source: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,7 +272,9 @@ class ConnectionDiagnostic:
     transfer_weight: float
     contribution_lux: float
     state_entity: str | None = None
+    assumed_state: str | None = None
     state_description: str | None = None
+    state_source: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

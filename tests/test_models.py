@@ -3,8 +3,10 @@
 import pytest
 
 from custom_components.room_daylight.const import (
+    AssumedState,
     CONF_AREA_ID,
     CONF_ARTIFICIAL_LIGHT_ENTITIES,
+    CONF_ASSUMED_STATE,
     CONF_AZIMUTH,
     CONF_CLOSED_TRANSMISSION,
     CONF_CONNECTION_MODEL,
@@ -64,6 +66,17 @@ def test_exterior_opening_parses_area_and_optional_entity() -> None:
     assert opening.cover_entity == "cover.patio"
     assert opening.azimuth_deg == 180.0
     assert opening.tilt_deg == 90.0
+    assert opening.assumed_state is AssumedState.OPEN
+
+
+def test_exterior_opening_parses_per_entry_assumed_state() -> None:
+    """Each exterior opening can define its own blind fallback state."""
+
+    opening = ExteriorOpening.from_mapping(
+        _opening_data(**{CONF_ASSUMED_STATE: "closed"})
+    )
+
+    assert opening.assumed_state is AssumedState.CLOSED
 
 
 def test_rooflight_uses_length_as_second_dimension() -> None:
@@ -155,6 +168,7 @@ def test_connection_mapping_supports_height_and_nested_efficiency() -> None:
 
     assert connection.area_m2 == pytest.approx(1.7)
     assert connection.state_entity == "binary_sensor.door"
+    assert connection.assumed_state is AssumedState.CLOSED
     assert connection.invert_state is True
     assert connection.closed_transmission == pytest.approx(0.15)
     assert connection.transfer_efficiency == pytest.approx(0.6)
@@ -179,6 +193,7 @@ def test_stairwell_connection_uses_length_and_default_efficiency() -> None:
 
     assert connection.area_m2 == pytest.approx(2.64)
     assert connection.state_entity is None
+    assert connection.assumed_state is AssumedState.OPEN
     assert connection.transfer_efficiency == pytest.approx(0.72)
 
 
@@ -189,3 +204,22 @@ def test_absent_optional_entities_normalise_to_none() -> None:
     data.pop(CONF_COVER_ENTITY)
     opening = ExteriorOpening.from_mapping(data)
     assert opening.cover_entity is None
+
+
+def test_connection_assumed_state_can_override_type_default() -> None:
+    """Per-connection assumptions override the type's initial default."""
+
+    connection = ConnectionDefinition.from_mapping(
+        "door",
+        {
+            CONF_CONNECTION_NAME: "Always-open door",
+            CONF_CONNECTION_TYPE: "door",
+            CONF_ROOM_A: "a",
+            CONF_ROOM_B: "b",
+            CONF_WIDTH: 0.9,
+            CONF_HEIGHT: 2.0,
+            CONF_ASSUMED_STATE: "open",
+        },
+    )
+
+    assert connection.assumed_state is AssumedState.OPEN

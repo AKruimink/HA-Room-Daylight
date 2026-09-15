@@ -24,8 +24,10 @@ from homeassistant.data_entry_flow import SectionConfig, section
 from homeassistant.helpers import selector
 
 from .const import (
+    ASSUMED_STATES,
     CONF_AREA_ID,
     CONF_ARTIFICIAL_LIGHT_ENTITIES,
+    CONF_ASSUMED_STATE,
     CONF_AZIMUTH,
     CONF_CLOSED_TRANSMISSION,
     CONF_CONNECTION_MODEL,
@@ -64,6 +66,7 @@ from .const import (
     DEFAULT_DAYLIGHT_UTILISATION,
     DEFAULT_DIFFUSE_FRACTION,
     DEFAULT_GLAZING_TRANSMISSION,
+    DEFAULT_OPENING_ASSUMED_STATE,
     DEFAULT_SENSOR_CORRECTION_STRENGTH,
     DEFAULT_SUN_ENTITY,
     DEFAULT_TRANSFER_EFFICIENCY,
@@ -79,6 +82,7 @@ from .const import (
     OPENING_TYPE_WALL,
     SUBENTRY_TYPE_CONNECTION,
     SUBENTRY_TYPE_ROOM,
+    default_connection_assumed_state,
 )
 
 
@@ -576,6 +580,15 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         ] = _entity_selector("cover")
         fields[
             vol.Required(
+                CONF_ASSUMED_STATE,
+                default=existing.get(
+                    CONF_ASSUMED_STATE,
+                    DEFAULT_OPENING_ASSUMED_STATE.value,
+                ),
+            )
+        ] = _static_select(ASSUMED_STATES, "assumed_state")
+        fields[
+            vol.Required(
                 CONF_TRANSMISSION,
                 default=existing.get(
                     CONF_TRANSMISSION,
@@ -823,6 +836,15 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
                 description={"suggested_value": self._existing.get(CONF_STATE_ENTITY)},
             )
         ] = _entity_selector(["binary_sensor", "input_boolean", "cover"])
+        fields[
+            vol.Required(
+                CONF_ASSUMED_STATE,
+                default=self._existing.get(
+                    CONF_ASSUMED_STATE,
+                    default_connection_assumed_state(connection_type).value,
+                ),
+            )
+        ] = _static_select(ASSUMED_STATES, "assumed_state")
         fields[
             vol.Required(
                 CONF_INVERT_STATE,

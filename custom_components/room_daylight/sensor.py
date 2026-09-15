@@ -217,6 +217,10 @@ class RoomDaylightSensor(CoordinatorEntity[RoomDaylightCoordinator], SensorEntit
                     "incidence_factor": round(item.incidence_factor, 4),
                     "sky_view_factor": round(item.sky_view_factor, 4),
                     "orientation_factor": round(item.orientation_factor, 4),
+                    "cover_entity": item.cover_entity,
+                    "assumed_state": item.assumed_state,
+                    "state": item.state_description,
+                    "state_source": item.state_source,
                     "cover_openness": round(item.cover_openness, 4),
                     "effective_transmission": round(
                         item.effective_transmission, 4
@@ -233,7 +237,9 @@ class RoomDaylightSensor(CoordinatorEntity[RoomDaylightCoordinator], SensorEntit
                     ),
                     "opening_area_m2": round(item.opening_area_m2, 3),
                     "state_entity": item.state_entity,
+                    "assumed_state": item.assumed_state,
                     "state": item.state_description,
+                    "state_source": item.state_source,
                     "transmission": round(item.transmission, 4),
                     "transfer_efficiency": round(item.transfer_efficiency, 4),
                     "transfer_weight": round(item.transfer_weight, 6),

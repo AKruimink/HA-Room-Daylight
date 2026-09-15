@@ -1,6 +1,6 @@
 # Room Daylight architecture
 
-This document records the design rules behind the Room Daylight 1.0.0 implementation. The goal is to make later maintenance safer: changes should preserve these invariants unless the data model is deliberately redesigned.
+This document records the design rules behind the current Room Daylight implementation. The goal is to make later maintenance safer: changes should preserve these invariants unless the data model is deliberately redesigned.
 
 ## 1. Configuration hierarchy
 
@@ -47,6 +47,10 @@ Pure exterior-daylight geometry and post-network local lux correction. No Home A
 ### `network.py`
 
 Pure bounded room-graph solver. No Home Assistant imports.
+
+### `openness.py`
+
+Pure resolution of live opening states and per-entry assumed fallbacks. No Home Assistant imports. Keeping these rules outside the coordinator makes missing/unavailable-state behaviour directly testable.
 
 ### `coordinator.py`
 
@@ -120,7 +124,9 @@ Opening contributions are summed and bounded to the non-negative outdoor illumin
 
 Rooms with no exterior glazed openings have zero native daylight by definition.
 
-A cover's openness multiplies glazing transmission. Unavailable cover state fails closed.
+A cover's openness multiplies glazing transmission. Every exterior opening also stores an `assumed_state` (`open` or `closed`). The coordinator uses that assumption when no cover entity is configured or the configured entity is missing, unknown or unavailable. A valid cover state or position overrides the assumption.
+
+New exterior openings start with an **open** assumption, but this is stored per opening and can be changed independently.
 
 ## 6. Room network
 
@@ -142,7 +148,9 @@ runtime_transmission =
     + openness * (1 - closed_transmission)
 ```
 
-No state entity means permanently open. An unavailable configured state entity fails closed before interpolation.
+Every connection stores an `assumed_state`. A valid `binary_sensor`, `input_boolean` or `cover` state overrides it. If no state entity is configured, or its state is missing, unknown or unavailable, the per-connection assumption supplies the openness before interpolation.
+
+Initial UI defaults are type-specific: doors start **closed**, while archways, stairwells and custom openings start **open**. These are creation defaults only; the stored per-connection value is authoritative. `invert_state` applies only to a usable live entity state and never flips the configured assumption.
 
 ## 7. Bounded network solver
 
@@ -239,7 +247,7 @@ Diagnostics should answer:
 - How much daylight was native to this room?
 - How much arrived through the room network?
 - Which opening or connection was influential?
-- What was the door/blind state and resulting transmission?
+- What was the door/blind state, was it live or assumed, and what transmission resulted?
 - Was local physical-sensor correction applied?
 - Did the room graph converge?
 
@@ -247,19 +255,19 @@ Explainability is a design requirement because the integration is intended to dr
 
 ## 12. Error posture
 
-Daylight-control failures should be conservative:
+Daylight-control failures should be deterministic and explainable:
 
 - invalid/unavailable lux state is ignored or treated as zero;
-- unavailable exterior cover state is closed;
-- unavailable connection state is closed;
+- missing, unknown or unavailable blind state uses that exterior opening's configured assumption;
+- missing, unknown or unavailable connection state uses that connection's configured assumption;
 - missing or unavailable artificial-light state blocks physical-sensor correction;
 - dangling connections to deleted rooms are ignored and logged;
 - numerical model inputs are clamped where appropriate.
 
-The preferred failure mode is underestimating natural light, which may switch an artificial light on, rather than overestimating daylight and leaving an occupied room dark.
+The state fallback is deliberately configuration-driven rather than globally conservative. Homes commonly contain a mixture of normally open and normally closed doors and blinds, so the user should describe that reality per physical opening.
 
 ## 13. Versioning
 
-1.0.0 is a clean schema. There is no migration code for the experimental one-entry-per-room implementation.
+The whole-house model is intentionally being developed as a clean schema, without migration code for earlier experimental one-entry-per-room layouts.
 
 Do not add compatibility machinery for unpublished development layouts unless there is a concrete installed schema that needs to be supported. Future released schema changes should use Home Assistant's normal config-entry/subentry migration mechanisms deliberately.

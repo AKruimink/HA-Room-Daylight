@@ -25,8 +25,8 @@ Room Daylight does not control your lights. It provides daylight sensors and dia
 - **Rooms without windows** — hallways, landings and other internal rooms can receive daylight through neighbouring rooms.
 - **Room-to-room daylight transfer** — model doors, archways, stairwells and custom openings between rooms.
 - **Multi-hop transfer** — daylight can propagate across several connected rooms while remaining mathematically bounded.
-- **Blinds and curtains** — optionally use Home Assistant `cover` entities to reduce incoming daylight.
-- **Door/opening state** — optionally use a `binary_sensor`, `input_boolean` or `cover` to control whether an internal connection is open.
+- **Blinds and curtains** — optionally use Home Assistant `cover` entities, with a per-opening assumed state when no usable sensor state exists.
+- **Door/opening state** — optionally use a `binary_sensor`, `input_boolean` or `cover`, with an independent assumed open/closed state for each connection.
 - **Indoor lux correction** — local illuminance sensors can gently correct the model without affecting other rooms.
 - **Artificial-light protection** — indoor sensor correction is suspended when configured room lights are on or their state is uncertain.
 - **Explainable diagnostics** — see native daylight, transferred daylight, sensor correction, opening contributions and network convergence.
@@ -63,10 +63,12 @@ flowchart TD
     Sun[Sun position] --> Exterior
     Glazing[Windows / glazed doors / rooflights] --> Exterior
     Covers[Blinds and curtains] --> Exterior
+    BlindFallback[Per-opening assumed blind state] --> Exterior
 
     Exterior --> Native[Native daylight per room]
     Native --> Network[Room-to-room daylight network]
     Connections[Doors / archways / stairwells] --> Network
+    ConnectionFallback[Per-connection assumed state] --> Network
 
     Network --> Modelled[Modelled room daylight]
     Modelled --> Correction[Local sensor correction]
@@ -226,17 +228,21 @@ The direct daylight contribution is based on the angle between the sun and the g
 
 ### Blinds and curtains
 
-An exterior opening can optionally reference a Home Assistant `cover` entity.
+Each exterior opening has an **Assumed blind state** and can optionally reference a Home Assistant `cover` entity. This makes the behaviour explicit even when a blind or curtain is not automated.
 
-If the cover exposes `current_position`, Room Daylight uses that position continuously:
+For example, two windows in the same room can be configured independently:
+
+- a normally uncovered window can assume **Open**;
+- a window whose blind is normally kept down can assume **Closed**.
+
+New exterior openings default to **Open**, because no configured cover often means there is no blind or curtain being modelled. You can change that assumption for each opening.
+
+When a configured cover has a usable state, that live state overrides the assumption. If it exposes `current_position`, Room Daylight uses the position continuously:
 
 - `0%` = fully closed;
 - `100%` = fully open.
 
-If no position is available, the normal open/closed cover state is used.
-
-> [!IMPORTANT]
-> An unavailable or unknown configured cover is treated as **closed**. This conservative behaviour avoids assuming daylight is available when the integration cannot confirm that the opening is unobstructed.
+If no position is available, the normal open/closed cover state is used. If no cover entity is configured, or the configured entity is missing, `unknown` or `unavailable`, Room Daylight falls back to that opening's **Assumed blind state**.
 
 ### Room connections
 
@@ -247,7 +253,7 @@ Supported connection types are:
 | Type | Typical use |
 | --- | --- |
 | **Door / doorway** | Standard internal door or doorway. |
-| **Open archway** | Permanently open connection between two rooms. |
+| **Open archway** | Unobstructed connection between two rooms. |
 | **Stairwell** | Stair or floor opening connecting spaces. |
 | **Custom opening** | Other internal opening geometry. |
 
@@ -255,18 +261,28 @@ A connection belongs to the relationship between two rooms rather than either ro
 
 #### Door/opening state
 
-A connection can optionally use a Home Assistant state entity:
+Every connection has an **Assumed connection state** and can optionally use a Home Assistant state entity:
 
 - `binary_sensor`;
 - `input_boolean`;
 - `cover`.
 
-Without a state entity, the connection is treated as permanently open.
+The assumption is stored on the individual connection, so an always-open kitchen doorway and a normally closed office door can behave differently even if neither has a sensor.
 
-For binary-style entities, `on` means open and `off` means closed. **Invert state** can be enabled for devices with opposite semantics. Position-aware covers can vary continuously between closed and fully open.
+New connections start with sensible type-specific assumptions:
 
-> [!IMPORTANT]
-> If a configured connection state entity is unavailable or unknown, Room Daylight treats the connection as **closed**.
+| Connection type | Initial assumed state |
+| --- | --- |
+| **Door / doorway** | Closed |
+| **Open archway** | Open |
+| **Stairwell** | Open |
+| **Custom opening** | Open |
+
+These are only starting values and can be changed per connection.
+
+When a configured state entity has a usable value, that live state overrides the assumption. For binary-style entities, `on` means open and `off` means closed. **Invert state** can be enabled for devices with opposite semantics. Position-aware covers can vary continuously between closed and fully open.
+
+If no state entity is configured, or the configured entity is missing, `unknown` or `unavailable`, Room Daylight falls back to that connection's **Assumed connection state**. Inversion applies only to a valid entity state; it does not invert the configured assumption.
 
 #### Closed transmission
 
@@ -278,7 +294,7 @@ Examples:
 | --- | ---: |
 | Solid internal door | `0.00` |
 | Partially glazed internal door | `0.15` |
-| Permanently open archway | `1.00` |
+| Open archway / unobstructed opening | `1.00` |
 
 These are examples, not prescribed values; tune them for your home.
 
@@ -316,8 +332,8 @@ The main Estimated daylight sensor also exposes detailed attributes for:
 
 - individual exterior-opening contributions;
 - incidence and sky-view factors;
-- cover openness and effective transmission;
-- room-connection weights and transmission;
+- cover openness, assumed state, state source and effective transmission;
+- room-connection assumed/live state, weights and transmission;
 - per-connection daylight contribution;
 - sensor correction state;
 - network iteration count and convergence.
@@ -388,7 +404,7 @@ Check that:
 - the outdoor illuminance sensor has a valid, non-negative reading;
 - the configured sun entity is available;
 - the room has a usable exterior opening, or a connection to another room receiving daylight;
-- configured blinds or curtains are not closed or unavailable.
+- the opening's assumed blind state and any configured cover state match the real blind/curtain position.
 
 The Estimated daylight sensor attributes contain additional opening and environment diagnostics.
 
@@ -398,7 +414,8 @@ Check that:
 
 - both connected rooms still exist;
 - the opening dimensions are sensible;
-- the state entity reports the opening as open and available;
+- the connection's assumed state is appropriate when no usable state entity is available;
+- any configured state entity reports the expected open/closed state;
 - **Closed transmission** is non-zero if you expect light through a closed door;
 - transfer efficiency is not configured unusually low.
 
