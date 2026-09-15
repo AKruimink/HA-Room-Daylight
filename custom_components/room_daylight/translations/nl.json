@@ -71,6 +71,11 @@
   "config_subentries": {
     "room": {
       "title": "Kamer",
+      "initiate_flow": {
+        "user": "Kamer toevoegen",
+        "reconfigure": "Kamer opnieuw configureren"
+      },
+      "entry_type": "Kamer",
       "step": {
         "user": {
           "title": "Kamer toevoegen",
@@ -179,11 +184,15 @@
       },
       "error": {
         "name_required": "Voer een naam in."
-      },
-      "entry_type": "Kamer"
+      }
     },
     "connection": {
       "title": "Verbinding",
+      "initiate_flow": {
+        "user": "Kamerverbinding toevoegen",
+        "reconfigure": "Kamerverbinding opnieuw configureren"
+      },
+      "entry_type": "Kamerverbinding",
       "step": {
         "user": {
           "title": "Kamerverbinding toevoegen",
@@ -267,8 +276,7 @@
       },
       "abort": {
         "need_two_rooms": "Configureer minstens twee kamers voordat je een verbinding toevoegt."
-      },
-      "entry_type": "Kamerverbinding"
+      }
     }
   },
   "selector": {

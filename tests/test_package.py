@@ -71,14 +71,27 @@ def test_custom_integration_uses_direct_translation_file() -> None:
     assert {"opening_type", "connection_type"} <= set(translations["selector"])
 
 
-def test_subentry_translations_have_required_entry_types() -> None:
+def test_subentry_translations_have_required_flow_metadata() -> None:
     translations = _json(INTEGRATION / "translations" / "en.json")
 
-    assert translations["config_subentries"]["room"]["entry_type"] == "Room"
-    assert (
-        translations["config_subentries"]["connection"]["entry_type"]
-        == "Room connection"
-    )
+    room = translations["config_subentries"]["room"]
+    connection = translations["config_subentries"]["connection"]
+
+    assert room["entry_type"] == "Room"
+    assert connection["entry_type"] == "Room connection"
+    assert set(room["initiate_flow"]) == {"user", "reconfigure"}
+    assert set(connection["initiate_flow"]) == {"user", "reconfigure"}
+    assert all(value.strip() for value in room["initiate_flow"].values())
+    assert all(value.strip() for value in connection["initiate_flow"].values())
+
+
+def test_no_translation_uses_legacy_config_title() -> None:
+    """Hassfest rejects the pre-0.109 config.title translation location."""
+
+    translations_dir = INTEGRATION / "translations"
+    for path in sorted(translations_dir.glob("*.json")):
+        translation = _json(path)
+        assert "title" not in translation.get("config", {}), path.name
 
 
 def test_supported_translations_match_english_schema_and_placeholders() -> None:
@@ -133,6 +146,8 @@ def test_additional_translation_files_remain_hassfest_compatible() -> None:
 
         for subentry in translation.get("config_subentries", {}).values():
             assert "entry_type" in subentry, path.name
+            assert "initiate_flow" in subentry, path.name
+            assert "user" in subentry["initiate_flow"], path.name
 
 
 def test_config_entry_runtime_data_alias_is_an_explicit_type_alias() -> None:

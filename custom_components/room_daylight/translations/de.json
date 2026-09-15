@@ -71,6 +71,11 @@
   "config_subentries": {
     "room": {
       "title": "Raum",
+      "initiate_flow": {
+        "user": "Raum hinzufügen",
+        "reconfigure": "Raum neu konfigurieren"
+      },
+      "entry_type": "Raum",
       "step": {
         "user": {
           "title": "Raum hinzufügen",
@@ -179,11 +184,15 @@
       },
       "error": {
         "name_required": "Geben Sie einen Namen ein."
-      },
-      "entry_type": "Raum"
+      }
     },
     "connection": {
       "title": "Verbindung",
+      "initiate_flow": {
+        "user": "Raumverbindung hinzufügen",
+        "reconfigure": "Raumverbindung neu konfigurieren"
+      },
+      "entry_type": "Raumverbindung",
       "step": {
         "user": {
           "title": "Raumverbindung hinzufügen",
@@ -267,8 +276,7 @@
       },
       "abort": {
         "need_two_rooms": "Konfigurieren Sie mindestens zwei Räume, bevor Sie eine Verbindung hinzufügen."
-      },
-      "entry_type": "Raumverbindung"
+      }
     }
   },
   "selector": {

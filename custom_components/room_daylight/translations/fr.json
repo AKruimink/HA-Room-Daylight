@@ -71,6 +71,11 @@
   "config_subentries": {
     "room": {
       "title": "Pièce",
+      "initiate_flow": {
+        "user": "Ajouter une pièce",
+        "reconfigure": "Reconfigurer la pièce"
+      },
+      "entry_type": "Pièce",
       "step": {
         "user": {
           "title": "Ajouter une pièce",
@@ -179,11 +184,15 @@
       },
       "error": {
         "name_required": "Saisissez un nom."
-      },
-      "entry_type": "Pièce"
+      }
     },
     "connection": {
       "title": "Connexion",
+      "initiate_flow": {
+        "user": "Ajouter une connexion entre pièces",
+        "reconfigure": "Reconfigurer la connexion entre pièces"
+      },
+      "entry_type": "Connexion entre pièces",
       "step": {
         "user": {
           "title": "Ajouter une connexion entre pièces",
@@ -267,8 +276,7 @@
       },
       "abort": {
         "need_two_rooms": "Configurez au moins deux pièces avant d’ajouter une connexion."
-      },
-      "entry_type": "Connexion entre pièces"
+      }
     }
   },
   "selector": {

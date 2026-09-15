@@ -71,6 +71,11 @@
   "config_subentries": {
     "room": {
       "title": "Habitación",
+      "initiate_flow": {
+        "user": "Añadir habitación",
+        "reconfigure": "Reconfigurar habitación"
+      },
+      "entry_type": "Habitación",
       "step": {
         "user": {
           "title": "Añadir habitación",
@@ -179,11 +184,15 @@
       },
       "error": {
         "name_required": "Introduce un nombre."
-      },
-      "entry_type": "Habitación"
+      }
     },
     "connection": {
       "title": "Conexión",
+      "initiate_flow": {
+        "user": "Añadir conexión entre habitaciones",
+        "reconfigure": "Reconfigurar conexión entre habitaciones"
+      },
+      "entry_type": "Conexión entre habitaciones",
       "step": {
         "user": {
           "title": "Añadir conexión entre habitaciones",
@@ -267,8 +276,7 @@
       },
       "abort": {
         "need_two_rooms": "Configura al menos dos habitaciones antes de añadir una conexión."
-      },
-      "entry_type": "Conexión entre habitaciones"
+      }
     }
   },
   "selector": {
