@@ -1,579 +1,919 @@
-"""Configuration flows for Room Daylight."""
+"""Config flow for Room Daylight."""
 
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 import voluptuous as vol
 
-from homeassistant import config_entries
-from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import CONF_NAME
-from homeassistant.core import callback
-from homeassistant.helpers.selector import (
-    BooleanSelector,
-    EntitySelector,
-    EntitySelectorConfig,
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
-    TextSelector,
+from homeassistant.config_entries import (
+    SOURCE_RECONFIGURE,
+    SOURCE_USER,
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentry,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
 )
-from homeassistant.util import slugify
+from homeassistant.const import UnitOfLength
+from homeassistant.core import callback
+from homeassistant.data_entry_flow import SectionConfig, section
+from homeassistant.helpers import selector
 
 from .const import (
-    CONF_ARTIFICIAL_LIGHTS,
+    ASSUMED_STATES,
+    CONF_AREA_ID,
+    CONF_ARTIFICIAL_LIGHT_ENTITIES,
+    CONF_ASSUMED_STATE,
     CONF_AZIMUTH,
-    CONF_CALIBRATION,
+    CONF_CLOSED_TRANSMISSION,
+    CONF_CONNECTION_MODEL,
+    CONF_CONNECTION_NAME,
+    CONF_CONNECTION_TYPE,
     CONF_COVER_ENTITY,
-    CONF_DAYLIGHT_GAIN,
-    CONF_DIFFUSE_BASE,
+    CONF_DAYLIGHT_UTILISATION,
+    CONF_DIFFUSE_FRACTION,
     CONF_FLOOR_AREA,
+    CONF_GLAZING_TRANSMISSION,
     CONF_HEIGHT,
-    CONF_INDOOR_ILLUMINANCE,
-    CONF_OUTSIDE_ILLUMINANCE,
-    CONF_SENSOR_BLEND,
-    CONF_SENSOR_MAX_RATIO,
-    CONF_SENSOR_MIN_RATIO,
-    CONF_SHOW_ADVANCED,
+    CONF_HEIGHT_CM,
+    CONF_INDOOR_LUX_SENSORS,
+    CONF_INVERT_STATE,
+    CONF_LENGTH,
+    CONF_LENGTH_CM,
+    CONF_MODEL_DEFAULTS,
+    CONF_OPENING_COUNT,
+    CONF_OPENING_ID,
+    CONF_OPENING_NAME,
+    CONF_OPENING_MODEL,
+    CONF_OPENING_TYPE,
+    CONF_OPENINGS,
+    CONF_OUTDOOR_ILLUMINANCE_ENTITY,
+    CONF_ROOF_PITCH,
+    CONF_ROOM_A,
+    CONF_ROOM_B,
+    CONF_ROOM_MODEL,
+    CONF_ROOM_NAME,
+    CONF_SENSOR_CORRECTION_STRENGTH,
+    CONF_STATE_ENTITY,
     CONF_SUN_ENTITY,
+    CONF_TILT,
+    CONF_TRANSFER_EFFICIENCY,
     CONF_TRANSMISSION,
     CONF_WIDTH,
-    CONF_WINDOW_COUNT,
-    CONF_WINDOWS,
-    DEFAULT_CALIBRATION,
-    DEFAULT_DAYLIGHT_GAIN,
-    DEFAULT_DIFFUSE_BASE,
-    DEFAULT_SENSOR_BLEND,
-    DEFAULT_SENSOR_MAX_RATIO,
-    DEFAULT_SENSOR_MIN_RATIO,
-    DEFAULT_WINDOW_TRANSMISSION,
+    CONF_WIDTH_CM,
+    CONNECTION_TYPES,
+    CONNECTION_TYPE_STAIRWELL,
+    DEFAULT_DAYLIGHT_UTILISATION,
+    DEFAULT_DIFFUSE_FRACTION,
+    DEFAULT_GLAZING_TRANSMISSION,
+    DEFAULT_OPENING_ASSUMED_STATE,
+    DEFAULT_SENSOR_CORRECTION_STRENGTH,
+    DEFAULT_SUN_ENTITY,
+    DEFAULT_TRANSFER_EFFICIENCY,
     DOMAIN,
+    MAX_EXTERIOR_OPENINGS,
+    MAX_FLOOR_AREA_M2,
+    MAX_OPENING_DIMENSION_M,
+    MIN_FLOOR_AREA_M2,
+    MIN_OPENING_DIMENSION_M,
+    NAME,
+    OPENING_TYPES,
+    OPENING_TYPE_ROOFLIGHT,
+    OPENING_TYPE_WALL,
+    SUBENTRY_TYPE_CONNECTION,
+    SUBENTRY_TYPE_ROOM,
+    default_connection_assumed_state,
 )
-
-MAX_WINDOWS = 20
 
 
 def _number_selector(
+    minimum: float,
+    maximum: float,
     *,
-    step: float,
-    minimum: float | None = None,
-    maximum: float | None = None,
-    unit: str | None = None,
-) -> NumberSelector:
-    """Create a numeric box without serialising unset selector options."""
-    config = NumberSelectorConfig(
-        step=step,
-        mode=NumberSelectorMode.BOX,
+    step: float = 0.01,
+) -> selector.NumberSelector:
+    """Return a boxed numeric selector with consistent behaviour."""
+
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=minimum,
+            max=maximum,
+            step=step,
+            mode=selector.NumberSelectorMode.BOX,
+        )
     )
-    if minimum is not None:
-        config["min"] = minimum
-    if maximum is not None:
-        config["max"] = maximum
-    if unit is not None:
-        config["unit_of_measurement"] = unit
-
-    return NumberSelector(config)
 
 
-def _illuminance_selector(*, multiple: bool = False) -> EntitySelector:
-    """Create an entity selector limited to illuminance sensors."""
-    return EntitySelector(
-        EntitySelectorConfig(
+def _ratio_selector() -> selector.NumberSelector:
+    """Return a 0..1 ratio selector."""
+
+    return _number_selector(0.0, 1.0, step=0.01)
+
+
+def _dimension_cm_selector() -> selector.NumberSelector:
+    """Return a centimetre selector for opening dimensions."""
+
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=MIN_OPENING_DIMENSION_M * 100.0,
+            max=MAX_OPENING_DIMENSION_M * 100.0,
+            step=1.0,
+            mode=selector.NumberSelectorMode.BOX,
+            unit_of_measurement=UnitOfLength.CENTIMETERS,
+        )
+    )
+
+
+def _metres_to_centimetres(value: Any, default_metres: float) -> float:
+    """Convert a persisted metre value to centimetres for the config UI."""
+
+    metres = default_metres if value is None else float(value)
+    return round(metres * 100.0, 3)
+
+
+def _centimetres_to_metres(value: Any) -> float:
+    """Convert a config-flow centimetre value to persisted metres."""
+
+    return float(value) / 100.0
+
+
+def _entity_selector(
+    domains: str | list[str],
+    *,
+    multiple: bool = False,
+    device_class: str | None = None,
+) -> selector.EntitySelector:
+    """Return an entity selector using current filter-style configuration."""
+
+    entity_filter: selector.EntityFilterSelectorConfig = {"domain": domains}
+    if device_class is not None:
+        entity_filter["device_class"] = device_class
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(
+            filter=entity_filter,
             multiple=multiple,
-            filter={
-                "domain": "sensor",
-                "device_class": SensorDeviceClass.ILLUMINANCE.value,
-            },
         )
     )
 
 
-def _sun_selector() -> EntitySelector:
-    """Create an entity selector limited to Sun entities."""
-    return EntitySelector(EntitySelectorConfig(filter={"domain": "sun"}))
+def _static_select(
+    options: tuple[str, ...],
+    translation_key: str,
+) -> selector.SelectSelector:
+    """Return a localisable single-value selector."""
 
-
-def _lights_selector() -> EntitySelector:
-    """Create a multiple-entity selector limited to lights."""
-    return EntitySelector(
-        EntitySelectorConfig(multiple=True, filter={"domain": "light"})
-    )
-
-
-def _covering_selector() -> EntitySelector:
-    """Create a selector for supported window-covering state entities."""
-    return EntitySelector(
-        EntitySelectorConfig(
-            filter={"domain": ["cover", "binary_sensor", "input_boolean"]}
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=list(options),
+            translation_key=translation_key,
+            mode=selector.SelectSelectorMode.DROPDOWN,
         )
     )
 
 
-def _window_count_selector() -> NumberSelector:
-    """Create the selector used for the number of exterior openings."""
-    # Range validation is handled in the flow so errors can be attached to
-    # this specific field instead of being intercepted by the frontend.
-    return _number_selector(step=1)
+def _model_defaults(data: dict[str, Any]) -> dict[str, float]:
+    """Return global model defaults, filling any absent values defensively."""
 
-
-def _room_schema(*, include_name: bool) -> vol.Schema:
-    """Build the common room form schema."""
-    fields: dict[Any, Any] = {}
-    # Fields that need field-specific validation are intentionally optional in
-    # the Voluptuous schema. Home Assistant's frontend blocks submission of
-    # missing vol.Required fields before the config flow can return per-field
-    # errors. We validate these values ourselves below instead.
-    if include_name:
-        fields[vol.Optional(CONF_NAME)] = TextSelector()
-
-    fields.update(
-        {
-            vol.Optional(CONF_OUTSIDE_ILLUMINANCE): _illuminance_selector(),
-            vol.Optional(CONF_SUN_ENTITY): _sun_selector(),
-            vol.Optional(CONF_FLOOR_AREA): _number_selector(
-                step=0.1,
-                unit="m²",
-            ),
-            vol.Optional(CONF_WINDOW_COUNT, default=1): _window_count_selector(),
-            vol.Optional(CONF_SHOW_ADVANCED, default=False): BooleanSelector(),
-        }
-    )
-
-    if include_name:
-        fields[vol.Optional(CONF_INDOOR_ILLUMINANCE, default=[])] = (
-            _illuminance_selector(multiple=True)
-        )
-        fields[vol.Optional(CONF_ARTIFICIAL_LIGHTS, default=[])] = _lights_selector()
-
-    return vol.Schema(fields)
-
-
-def _window_schema(*, advanced: bool) -> vol.Schema:
-    """Build the form schema for one exterior opening."""
-    fields: dict[Any, Any] = {
-        vol.Optional(CONF_WIDTH): _number_selector(step=0.01, unit="m"),
-        vol.Optional(CONF_HEIGHT): _number_selector(step=0.01, unit="m"),
-        vol.Optional(CONF_AZIMUTH): _number_selector(step=1, unit="°"),
-        vol.Optional(CONF_COVER_ENTITY): _covering_selector(),
-    }
-    if advanced:
-        fields[
-            vol.Optional(
-                CONF_TRANSMISSION,
-                description={"suggested_value": DEFAULT_WINDOW_TRANSMISSION},
+    model = data.get(CONF_MODEL_DEFAULTS, {})
+    return {
+        CONF_DIFFUSE_FRACTION: float(
+            model.get(CONF_DIFFUSE_FRACTION, DEFAULT_DIFFUSE_FRACTION)
+        ),
+        CONF_GLAZING_TRANSMISSION: float(
+            model.get(CONF_GLAZING_TRANSMISSION, DEFAULT_GLAZING_TRANSMISSION)
+        ),
+        CONF_DAYLIGHT_UTILISATION: float(
+            model.get(CONF_DAYLIGHT_UTILISATION, DEFAULT_DAYLIGHT_UTILISATION)
+        ),
+        CONF_TRANSFER_EFFICIENCY: float(
+            model.get(CONF_TRANSFER_EFFICIENCY, DEFAULT_TRANSFER_EFFICIENCY)
+        ),
+        CONF_SENSOR_CORRECTION_STRENGTH: float(
+            model.get(
+                CONF_SENSOR_CORRECTION_STRENGTH,
+                DEFAULT_SENSOR_CORRECTION_STRENGTH,
             )
-        ] = _number_selector(step=0.01)
-    return vol.Schema(fields)
+        ),
+    }
 
 
-def _advanced_schema() -> vol.Schema:
-    """Build the advanced model-settings form schema."""
-    # Suggested values keep the recommended defaults visible while still
-    # allowing our validator to report a cleared or invalid field directly.
+def _global_schema(existing: dict[str, Any] | None = None) -> vol.Schema:
+    """Build the parent-entry schema."""
+
+    existing = existing or {}
+    defaults = _model_defaults(existing)
     return vol.Schema(
         {
-            vol.Optional(
-                CONF_CALIBRATION,
-                description={"suggested_value": DEFAULT_CALIBRATION},
-            ): _number_selector(step=0.01),
-            vol.Optional(
-                CONF_DAYLIGHT_GAIN,
-                description={"suggested_value": DEFAULT_DAYLIGHT_GAIN},
-            ): _number_selector(step=0.001),
-            vol.Optional(
-                CONF_DIFFUSE_BASE,
-                description={"suggested_value": DEFAULT_DIFFUSE_BASE},
-            ): _number_selector(step=0.01),
-            vol.Optional(
-                CONF_SENSOR_BLEND,
-                description={"suggested_value": DEFAULT_SENSOR_BLEND},
-            ): _number_selector(step=0.01),
-            vol.Optional(
-                CONF_SENSOR_MIN_RATIO,
-                description={"suggested_value": DEFAULT_SENSOR_MIN_RATIO},
-            ): _number_selector(step=0.05),
-            vol.Optional(
-                CONF_SENSOR_MAX_RATIO,
-                description={"suggested_value": DEFAULT_SENSOR_MAX_RATIO},
-            ): _number_selector(step=0.05),
+            vol.Required(
+                CONF_OUTDOOR_ILLUMINANCE_ENTITY,
+                description={
+                    "suggested_value": existing.get(
+                        CONF_OUTDOOR_ILLUMINANCE_ENTITY
+                    )
+                },
+            ): _entity_selector("sensor", device_class="illuminance"),
+            vol.Required(
+                CONF_SUN_ENTITY,
+                default=existing.get(CONF_SUN_ENTITY, DEFAULT_SUN_ENTITY),
+            ): _entity_selector("sun"),
+            vol.Required(CONF_MODEL_DEFAULTS): section(
+                vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_DIFFUSE_FRACTION,
+                            default=defaults[CONF_DIFFUSE_FRACTION],
+                        ): _ratio_selector(),
+                        vol.Required(
+                            CONF_GLAZING_TRANSMISSION,
+                            default=defaults[CONF_GLAZING_TRANSMISSION],
+                        ): _ratio_selector(),
+                        vol.Required(
+                            CONF_DAYLIGHT_UTILISATION,
+                            default=defaults[CONF_DAYLIGHT_UTILISATION],
+                        ): _ratio_selector(),
+                        vol.Required(
+                            CONF_TRANSFER_EFFICIENCY,
+                            default=defaults[CONF_TRANSFER_EFFICIENCY],
+                        ): _ratio_selector(),
+                        vol.Required(
+                            CONF_SENSOR_CORRECTION_STRENGTH,
+                            default=defaults[CONF_SENSOR_CORRECTION_STRENGTH],
+                        ): _ratio_selector(),
+                    }
+                ),
+                SectionConfig(collapsed=True),
+            ),
         }
     )
 
 
-def _model_defaults() -> dict[str, float]:
-    """Return explicit defaults stored with every room configuration."""
-    return {
-        CONF_CALIBRATION: DEFAULT_CALIBRATION,
-        CONF_DAYLIGHT_GAIN: DEFAULT_DAYLIGHT_GAIN,
-        CONF_DIFFUSE_BASE: DEFAULT_DIFFUSE_BASE,
-        CONF_SENSOR_BLEND: DEFAULT_SENSOR_BLEND,
-        CONF_SENSOR_MIN_RATIO: DEFAULT_SENSOR_MIN_RATIO,
-        CONF_SENSOR_MAX_RATIO: DEFAULT_SENSOR_MAX_RATIO,
-    }
+class RoomDaylightConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Configure the single house-wide Room Daylight environment."""
 
+    VERSION = 1
 
-def _validate_room_input(
-    user_input: dict[str, Any],
-    *,
-    require_name: bool,
-) -> dict[str, str]:
-    """Validate values shared by setup and reconfigure flows."""
-    errors: dict[str, str] = {}
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls,
+        config_entry: ConfigEntry,
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Return the subentry types managed by this integration."""
 
-    if require_name and not str(user_input.get(CONF_NAME, "")).strip():
-        errors[CONF_NAME] = "required"
-
-    if not user_input.get(CONF_OUTSIDE_ILLUMINANCE):
-        errors[CONF_OUTSIDE_ILLUMINANCE] = "required"
-    if not user_input.get(CONF_SUN_ENTITY):
-        errors[CONF_SUN_ENTITY] = "required"
-
-    try:
-        floor_area = float(user_input[CONF_FLOOR_AREA])
-    except (KeyError, TypeError, ValueError):
-        errors[CONF_FLOOR_AREA] = "required"
-    else:
-        if floor_area <= 0:
-            errors[CONF_FLOOR_AREA] = "positive_number"
-
-    try:
-        window_count = int(user_input[CONF_WINDOW_COUNT])
-    except (KeyError, TypeError, ValueError):
-        errors[CONF_WINDOW_COUNT] = "required"
-    else:
-        if not 1 <= window_count <= MAX_WINDOWS:
-            errors[CONF_WINDOW_COUNT] = "window_count_range"
-
-    return errors
-
-
-def _validate_window_input(
-    user_input: dict[str, Any],
-    *,
-    advanced: bool,
-) -> dict[str, str]:
-    """Validate one exterior opening."""
-    errors: dict[str, str] = {}
-
-    for key in (CONF_WIDTH, CONF_HEIGHT):
-        try:
-            value = float(user_input[key])
-        except (KeyError, TypeError, ValueError):
-            errors[key] = "required"
-        else:
-            if value <= 0:
-                errors[key] = "positive_number"
-
-    try:
-        azimuth = float(user_input[CONF_AZIMUTH])
-    except (KeyError, TypeError, ValueError):
-        errors[CONF_AZIMUTH] = "required"
-    else:
-        if not 0 <= azimuth < 360:
-            errors[CONF_AZIMUTH] = "azimuth_range"
-
-    if advanced:
-        try:
-            transmission = float(user_input[CONF_TRANSMISSION])
-        except (KeyError, TypeError, ValueError):
-            errors[CONF_TRANSMISSION] = "required"
-        else:
-            if not 0 <= transmission <= 1:
-                errors[CONF_TRANSMISSION] = "zero_to_one"
-
-    return errors
-
-
-def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
-    """Validate advanced room-model parameters."""
-    errors: dict[str, str] = {}
-
-    ranges = {
-        CONF_CALIBRATION: (0.01, 10.0),
-        CONF_DAYLIGHT_GAIN: (0.001, 2.0),
-        CONF_DIFFUSE_BASE: (0.0, 1.0),
-        CONF_SENSOR_BLEND: (0.0, 1.0),
-        CONF_SENSOR_MIN_RATIO: (0.0, 10.0),
-        CONF_SENSOR_MAX_RATIO: (0.0, 10.0),
-    }
-    for key, (minimum, maximum) in ranges.items():
-        try:
-            value = float(user_input[key])
-        except (KeyError, TypeError, ValueError):
-            errors[key] = "required"
-        else:
-            if not minimum <= value <= maximum:
-                errors[key] = "advanced_range"
-
-    if CONF_SENSOR_MIN_RATIO not in errors and CONF_SENSOR_MAX_RATIO not in errors:
-        if float(user_input[CONF_SENSOR_MAX_RATIO]) < float(
-            user_input[CONF_SENSOR_MIN_RATIO]
-        ):
-            errors[CONF_SENSOR_MAX_RATIO] = "sensor_ratio_order"
-
-    return errors
-
-
-def _window_from_input(
-    user_input: dict[str, Any],
-    *,
-    advanced: bool,
-    existing: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Normalise one valid window form submission for storage."""
-    window: dict[str, Any] = {
-        CONF_WIDTH: float(user_input[CONF_WIDTH]),
-        CONF_HEIGHT: float(user_input[CONF_HEIGHT]),
-        CONF_AZIMUTH: float(user_input[CONF_AZIMUTH]),
-    }
-    if cover_entity := user_input.get(CONF_COVER_ENTITY):
-        window[CONF_COVER_ENTITY] = cover_entity
-
-    if advanced:
-        window[CONF_TRANSMISSION] = float(user_input[CONF_TRANSMISSION])
-    else:
-        window[CONF_TRANSMISSION] = float(
-            (existing or {}).get(CONF_TRANSMISSION, DEFAULT_WINDOW_TRANSMISSION)
-        )
-
-    return window
-
-
-class RoomDaylightConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle setup and reconfiguration for Room Daylight."""
-
-    VERSION = 3
-
-    def __init__(self) -> None:
-        """Initialise temporary state used while walking multi-step forms."""
-        self._room_data: dict[str, Any] = {}
-        self._windows: list[dict[str, Any]] = []
-        self._window_count = 1
-        self._window_index = 0
-        self._reconfigure = False
-        self._show_advanced = False
-        self._existing_windows: list[dict[str, Any]] = []
-
-    def _start_window_steps(
-        self,
-        *,
-        window_count: int,
-        existing_windows: list[dict[str, Any]] | None = None,
-    ) -> None:
-        """Reset temporary state before collecting window details."""
-        self._window_count = window_count
-        self._window_index = 0
-        self._windows = []
-        self._existing_windows = existing_windows or []
-
-    def _finish_flow(self) -> config_entries.ConfigFlowResult:
-        """Create or update the room after all setup steps are complete."""
-        data = {**self._room_data, CONF_WINDOWS: list(self._windows)}
-        if self._reconfigure:
-            return self.async_update_reload_and_abort(
-                self._get_reconfigure_entry(),
-                data_updates=data,
-            )
-        return self.async_create_entry(title=data[CONF_NAME], data=data)
+        return {
+            SUBENTRY_TYPE_ROOM: RoomSubentryFlow,
+            SUBENTRY_TYPE_CONNECTION: ConnectionSubentryFlow,
+        }
 
     async def async_step_user(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Collect initial room and source configuration."""
-        errors: dict[str, str] = {}
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set up the global daylight environment."""
 
         if user_input is not None:
-            errors = _validate_room_input(user_input, require_name=True)
-            if not errors:
-                room_data = dict(user_input)
-                name = str(room_data[CONF_NAME]).strip()
-                window_count = int(room_data.pop(CONF_WINDOW_COUNT))
-                self._show_advanced = bool(room_data.pop(CONF_SHOW_ADVANCED, False))
+            return self.async_create_entry(title=NAME, data=user_input)
 
-                await self.async_set_unique_id(slugify(name))
-                self._abort_if_unique_id_configured()
-
-                room_data[CONF_NAME] = name
-                for key, value in _model_defaults().items():
-                    room_data.setdefault(key, value)
-
-                self._room_data = room_data
-                self._start_window_steps(window_count=window_count)
-                return await self.async_step_window()
-
-        schema = _room_schema(include_name=True)
-        if user_input:
-            schema = self.add_suggested_values_to_schema(schema, user_input)
-        return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
-            errors=errors,
-        )
-
-    async def async_step_window(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Collect one exterior window or glazed door."""
-        errors: dict[str, str] = {}
-        existing = (
-            self._existing_windows[self._window_index]
-            if self._window_index < len(self._existing_windows)
-            else None
-        )
-
-        if user_input is not None:
-            errors = _validate_window_input(
-                user_input,
-                advanced=self._show_advanced,
-            )
-            if not errors:
-                self._windows.append(
-                    _window_from_input(
-                        user_input,
-                        advanced=self._show_advanced,
-                        existing=existing,
-                    )
-                )
-                self._window_index += 1
-
-                if self._window_index < self._window_count:
-                    return await self.async_step_window()
-                if self._show_advanced:
-                    return await self.async_step_advanced()
-                return self._finish_flow()
-
-        schema = _window_schema(advanced=self._show_advanced)
-        suggested = existing or {}
-        if user_input:
-            suggested = {**suggested, **user_input}
-        if suggested:
-            schema = self.add_suggested_values_to_schema(schema, suggested)
-
-        return self.async_show_form(
-            step_id="window",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={
-                "window_number": str(self._window_index + 1),
-                "window_total": str(self._window_count),
-            },
-        )
-
-    async def async_step_advanced(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Collect optional advanced model settings."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            errors = _validate_advanced_input(user_input)
-            if not errors:
-                for key in _model_defaults():
-                    self._room_data[key] = float(user_input[key])
-                return self._finish_flow()
-
-        current = {
-            key: self._room_data.get(key, default)
-            for key, default in _model_defaults().items()
-        }
-        if user_input:
-            current.update(user_input)
-
-        return self.async_show_form(
-            step_id="advanced",
-            data_schema=self.add_suggested_values_to_schema(
-                _advanced_schema(),
-                current,
-            ),
-            errors=errors,
-        )
+        return self.async_show_form(step_id="user", data_schema=_global_schema())
 
     async def async_step_reconfigure(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Reconfigure structural room inputs, windows and model parameters."""
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Reconfigure global daylight sources and defaults."""
+
         entry = self._get_reconfigure_entry()
-        errors: dict[str, str] = {}
-
         if user_input is not None:
-            errors = _validate_room_input(user_input, require_name=False)
-            if not errors:
-                room_data = {**entry.data, **user_input}
-                window_count = int(room_data.pop(CONF_WINDOW_COUNT))
-                self._show_advanced = bool(room_data.pop(CONF_SHOW_ADVANCED, False))
-
-                self._reconfigure = True
-                self._room_data = room_data
-                self._start_window_steps(
-                    window_count=window_count,
-                    existing_windows=list(entry.data.get(CONF_WINDOWS, [])),
-                )
-                return await self.async_step_window()
-
-        suggested = {
-            CONF_OUTSIDE_ILLUMINANCE: entry.data.get(CONF_OUTSIDE_ILLUMINANCE),
-            CONF_SUN_ENTITY: entry.data.get(CONF_SUN_ENTITY),
-            CONF_FLOOR_AREA: entry.data.get(CONF_FLOOR_AREA),
-            CONF_WINDOW_COUNT: len(entry.data.get(CONF_WINDOWS, [])) or 1,
-            CONF_SHOW_ADVANCED: False,
-        }
-        if user_input:
-            suggested.update(user_input)
+            # The config-entry update listener owns reloading.  Keeping reload
+            # in one place also means room/connection add, edit and removal
+            # use the exact same lifecycle path.
+            return self.async_update_and_abort(entry, data=user_input)
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self.add_suggested_values_to_schema(
-                _room_schema(include_name=False),
-                suggested,
-            ),
-            errors=errors,
+            data_schema=_global_schema(dict(entry.data)),
         )
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> config_entries.OptionsFlow:
-        """Return the options flow for optional sensor inputs."""
-        return RoomDaylightOptionsFlow()
 
+class RoomSubentryFlow(ConfigSubentryFlow):
+    """Add or reconfigure one room and its exterior glazed openings."""
 
-class RoomDaylightOptionsFlow(config_entries.OptionsFlowWithReload):
-    """Manage optional indoor sensors and artificial-light exclusions."""
+    def __init__(self) -> None:
+        """Initialise transient wizard state."""
 
-    async def async_step_init(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Show and save optional room inputs."""
-        if user_input is not None:
-            return self.async_create_entry(data=user_input)
+        self._prepared = False
+        self._existing: dict[str, Any] = {}
+        self._room_data: dict[str, Any] = {}
+        self._existing_openings: list[dict[str, Any]] = []
+        self._openings: list[dict[str, Any]] = []
+        self._opening_count = 0
+        self._opening_index = 0
+        self._opening_type: str | None = None
 
-        current = {
-            CONF_INDOOR_ILLUMINANCE: self.config_entry.options.get(
-                CONF_INDOOR_ILLUMINANCE,
-                self.config_entry.data.get(CONF_INDOOR_ILLUMINANCE, []),
+    def _prepare(self) -> None:
+        """Load reconfigure data once, or initialise an empty room."""
+
+        if self._prepared:
+            return
+        if self.source == SOURCE_RECONFIGURE:
+            self._existing = dict(self._get_reconfigure_subentry().data)
+            self._existing_openings = [
+                dict(item) for item in self._existing.get(CONF_OPENINGS, ())
+            ]
+        self._prepared = True
+
+    def _room_schema(self) -> vol.Schema:
+        """Build the basic room schema using parent defaults."""
+
+        parent_defaults = _model_defaults(dict(self._get_entry().data))
+        room_model = self._existing.get(CONF_ROOM_MODEL, {})
+        daylight_utilisation = float(
+            room_model.get(
+                CONF_DAYLIGHT_UTILISATION,
+                parent_defaults[CONF_DAYLIGHT_UTILISATION],
+            )
+        )
+        sensor_correction = float(
+            room_model.get(
+                CONF_SENSOR_CORRECTION_STRENGTH,
+                parent_defaults[CONF_SENSOR_CORRECTION_STRENGTH],
+            )
+        )
+
+        schema: dict[Any, Any] = {
+            vol.Required(
+                CONF_ROOM_NAME,
+                default=self._existing.get(CONF_ROOM_NAME, ""),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_FLOOR_AREA,
+                default=self._existing.get(CONF_FLOOR_AREA, 10.0),
+            ): _number_selector(MIN_FLOOR_AREA_M2, MAX_FLOOR_AREA_M2, step=0.1),
+            vol.Optional(
+                CONF_AREA_ID,
+                description={
+                    "suggested_value": self._existing.get(CONF_AREA_ID)
+                },
+            ): selector.AreaSelector(),
+            vol.Required(
+                CONF_OPENING_COUNT,
+                default=len(self._existing_openings),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=MAX_EXTERIOR_OPENINGS,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
             ),
-            CONF_ARTIFICIAL_LIGHTS: self.config_entry.options.get(
-                CONF_ARTIFICIAL_LIGHTS,
-                self.config_entry.data.get(CONF_ARTIFICIAL_LIGHTS, []),
+            vol.Optional(
+                CONF_INDOOR_LUX_SENSORS,
+                default=list(self._existing.get(CONF_INDOOR_LUX_SENSORS, ())),
+            ): _entity_selector(
+                "sensor",
+                multiple=True,
+                device_class="illuminance",
+            ),
+            vol.Optional(
+                CONF_ARTIFICIAL_LIGHT_ENTITIES,
+                default=list(
+                    self._existing.get(CONF_ARTIFICIAL_LIGHT_ENTITIES, ())
+                ),
+            ): _entity_selector(["light", "switch"], multiple=True),
+            vol.Required(CONF_ROOM_MODEL): section(
+                vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_DAYLIGHT_UTILISATION,
+                            default=daylight_utilisation,
+                        ): _ratio_selector(),
+                        vol.Required(
+                            CONF_SENSOR_CORRECTION_STRENGTH,
+                            default=sensor_correction,
+                        ): _ratio_selector(),
+                    }
+                ),
+                SectionConfig(collapsed=True),
             ),
         }
-        schema = vol.Schema(
-            {
-                vol.Optional(CONF_INDOOR_ILLUMINANCE, default=[]): (
-                    _illuminance_selector(multiple=True)
+        return vol.Schema(schema)
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Add a room."""
+
+        self._prepare()
+        return await self._async_step_room(user_input, "user")
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Reconfigure a room."""
+
+        self._prepare()
+        return await self._async_step_room(user_input, "reconfigure")
+
+    async def _async_step_room(
+        self,
+        user_input: dict[str, Any] | None,
+        step_id: str,
+    ) -> SubentryFlowResult:
+        """Handle common room fields."""
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id=step_id,
+                data_schema=self._room_schema(),
+            )
+
+        data = dict(user_input)
+        room_name = str(data.get(CONF_ROOM_NAME, "")).strip()
+        if not room_name:
+            return self.async_show_form(
+                step_id=step_id,
+                data_schema=self._room_schema(),
+                errors={CONF_ROOM_NAME: "name_required"},
+            )
+        data[CONF_ROOM_NAME] = room_name
+        self._opening_count = int(data.pop(CONF_OPENING_COUNT))
+        self._room_data = data
+        self._openings = []
+        self._opening_index = 0
+        self._opening_type = None
+
+        if self._opening_count == 0:
+            return self._finish_room()
+        return await self.async_step_opening()
+
+    async def async_step_opening(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Choose the type for the current exterior glazed opening."""
+
+        existing = self._current_existing_opening()
+        if user_input is not None:
+            self._opening_type = str(user_input[CONF_OPENING_TYPE])
+            return await self.async_step_opening_details()
+
+        return self.async_show_form(
+            step_id="opening",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_OPENING_TYPE,
+                        default=existing.get(CONF_OPENING_TYPE, OPENING_TYPE_WALL),
+                    ): _static_select(OPENING_TYPES, "opening_type"),
+                }
+            ),
+            description_placeholders={
+                "number": str(self._opening_index + 1),
+                "total": str(self._opening_count),
+            },
+        )
+
+    async def async_step_opening_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Configure dimensions and orientation for the current opening."""
+
+        if self._opening_type is None:
+            return await self.async_step_opening()
+
+        existing = self._current_existing_opening()
+        if user_input is not None:
+            data = dict(user_input)
+            opening_name = str(data.get(CONF_OPENING_NAME, "")).strip()
+            if not opening_name:
+                return self.async_show_form(
+                    step_id="opening_details",
+                    data_schema=self._opening_details_schema(existing),
+                    errors={CONF_OPENING_NAME: "name_required"},
+                    description_placeholders={
+                        "number": str(self._opening_index + 1),
+                        "total": str(self._opening_count),
+                    },
+                )
+            data[CONF_OPENING_NAME] = opening_name
+            opening = self._normalise_opening(data, existing)
+            self._openings.append(opening)
+            self._opening_index += 1
+            self._opening_type = None
+            if self._opening_index < self._opening_count:
+                return await self.async_step_opening()
+            return self._finish_room()
+
+        return self.async_show_form(
+            step_id="opening_details",
+            data_schema=self._opening_details_schema(existing),
+            description_placeholders={
+                "number": str(self._opening_index + 1),
+                "total": str(self._opening_count),
+            },
+        )
+
+    def _current_existing_opening(self) -> dict[str, Any]:
+        """Return the opening currently being reconfigured, if any."""
+
+        if self._opening_index < len(self._existing_openings):
+            return self._existing_openings[self._opening_index]
+        return {}
+
+    def _opening_details_schema(self, existing: dict[str, Any]) -> vol.Schema:
+        """Build a type-specific opening details schema."""
+
+        defaults = _model_defaults(dict(self._get_entry().data))
+        fields: dict[Any, Any] = {
+            vol.Required(
+                CONF_OPENING_NAME,
+                default=existing.get(
+                    CONF_OPENING_NAME,
+                    f"Opening {self._opening_index + 1}",
                 ),
-                vol.Optional(CONF_ARTIFICIAL_LIGHTS, default=[]): _lights_selector(),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_WIDTH_CM,
+                default=_metres_to_centimetres(
+                    existing.get(CONF_WIDTH),
+                    1.0,
+                ),
+            ): _dimension_cm_selector(),
+        }
+
+        if self._opening_type == OPENING_TYPE_ROOFLIGHT:
+            fields[
+                vol.Required(
+                    CONF_LENGTH_CM,
+                    default=_metres_to_centimetres(
+                        existing.get(CONF_LENGTH, existing.get(CONF_HEIGHT)),
+                        1.0,
+                    ),
+                )
+            ] = _dimension_cm_selector()
+            fields[
+                vol.Required(
+                    CONF_ROOF_PITCH,
+                    default=existing.get(
+                        CONF_ROOF_PITCH,
+                        existing.get(CONF_TILT, 0.0),
+                    ),
+                )
+            ] = _number_selector(0.0, 90.0, step=0.5)
+        else:
+            fields[
+                vol.Required(
+                    CONF_HEIGHT_CM,
+                    default=_metres_to_centimetres(
+                        existing.get(CONF_HEIGHT, existing.get(CONF_LENGTH)),
+                        1.0,
+                    ),
+                )
+            ] = _dimension_cm_selector()
+            if self._opening_type != OPENING_TYPE_WALL:
+                fields[
+                    vol.Required(
+                        CONF_TILT,
+                        default=existing.get(CONF_TILT, 90.0),
+                    )
+                ] = _number_selector(0.0, 180.0, step=0.5)
+
+        fields[
+            vol.Required(
+                CONF_AZIMUTH,
+                default=existing.get(CONF_AZIMUTH, 0.0),
+            )
+        ] = _number_selector(0.0, 359.9, step=0.1)
+        fields[
+            vol.Optional(
+                CONF_COVER_ENTITY,
+                description={"suggested_value": existing.get(CONF_COVER_ENTITY)},
+            )
+        ] = _entity_selector("cover")
+        fields[
+            vol.Required(
+                CONF_ASSUMED_STATE,
+                default=existing.get(
+                    CONF_ASSUMED_STATE,
+                    DEFAULT_OPENING_ASSUMED_STATE.value,
+                ),
+            )
+        ] = _static_select(ASSUMED_STATES, "assumed_state")
+        fields[vol.Required(CONF_OPENING_MODEL)] = section(
+            vol.Schema(
+                {
+                    vol.Required(
+                        CONF_TRANSMISSION,
+                        default=existing.get(
+                            CONF_TRANSMISSION,
+                            defaults[CONF_GLAZING_TRANSMISSION],
+                        ),
+                    ): _ratio_selector(),
+                }
+            ),
+            SectionConfig(collapsed=True),
+        )
+        return vol.Schema(fields)
+
+    def _normalise_opening(
+        self,
+        user_input: dict[str, Any],
+        existing: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Convert UI-specific form data to the persisted opening model."""
+
+        data = dict(user_input)
+        opening_model = dict(data.pop(CONF_OPENING_MODEL))
+        data[CONF_OPENING_ID] = existing.get(CONF_OPENING_ID, uuid4().hex)
+        data[CONF_OPENING_TYPE] = self._opening_type
+        data[CONF_WIDTH] = _centimetres_to_metres(data.pop(CONF_WIDTH_CM))
+        data[CONF_TRANSMISSION] = float(opening_model[CONF_TRANSMISSION])
+
+        if self._opening_type == OPENING_TYPE_ROOFLIGHT:
+            data[CONF_LENGTH] = _centimetres_to_metres(data.pop(CONF_LENGTH_CM))
+            data[CONF_TILT] = float(data[CONF_ROOF_PITCH])
+        else:
+            data[CONF_HEIGHT] = _centimetres_to_metres(data.pop(CONF_HEIGHT_CM))
+            if self._opening_type == OPENING_TYPE_WALL:
+                data[CONF_TILT] = 90.0
+
+        return data
+
+    def _finish_room(self) -> SubentryFlowResult:
+        """Create or update the room subentry."""
+
+        data = {**self._room_data, CONF_OPENINGS: self._openings}
+        title = str(data[CONF_ROOM_NAME]).strip()
+        if self.source == SOURCE_USER:
+            return self.async_create_entry(title=title, data=data)
+        return self.async_update_and_abort(
+            self._get_entry(),
+            self._get_reconfigure_subentry(),
+            title=title,
+            data=data,
+        )
+
+
+class ConnectionSubentryFlow(ConfigSubentryFlow):
+    """Add or reconfigure a physical daylight connection between two rooms."""
+
+    def __init__(self) -> None:
+        """Initialise transient wizard state."""
+
+        self._prepared = False
+        self._existing: dict[str, Any] = {}
+        self._connection_data: dict[str, Any] = {}
+
+    def _prepare(self) -> None:
+        """Load existing connection data when reconfiguring."""
+
+        if self._prepared:
+            return
+        if self.source == SOURCE_RECONFIGURE:
+            self._existing = dict(self._get_reconfigure_subentry().data)
+        self._prepared = True
+
+    def _rooms(self) -> list[ConfigSubentry]:
+        """Return currently configured room subentries."""
+
+        return [
+            subentry
+            for subentry in self._get_entry().subentries.values()
+            if subentry.subentry_type == SUBENTRY_TYPE_ROOM
+        ]
+
+    def _room_options(self) -> list[selector.SelectOptionDict]:
+        """Return selector options for configured rooms."""
+
+        return [
+            selector.SelectOptionDict(value=room.subentry_id, label=room.title)
+            for room in self._rooms()
+        ]
+
+    def _room_title(self, room_id: str) -> str:
+        """Resolve a room subentry ID to a friendly title."""
+
+        room = self._get_entry().subentries.get(room_id)
+        return room.title if room is not None else room_id
+
+    def _connection_schema(self) -> vol.Schema:
+        """Build the room and connection-type selection schema."""
+
+        options = self._room_options()
+        first = options[0]["value"] if options else ""
+        second = options[1]["value"] if len(options) > 1 else first
+        room_ids = {option["value"] for option in options}
+        room_a = self._existing.get(CONF_ROOM_A, first)
+        room_b = self._existing.get(CONF_ROOM_B, second)
+        if room_a not in room_ids:
+            room_a = first
+        if room_b not in room_ids:
+            room_b = second
+        if room_a == room_b and len(options) > 1:
+            room_b = next(
+                option["value"] for option in options if option["value"] != room_a
+            )
+
+        room_selector_config = selector.SelectSelectorConfig(
+            options=options,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+        return vol.Schema(
+            {
+                vol.Optional(
+                    CONF_CONNECTION_NAME,
+                    default=self._existing.get(CONF_CONNECTION_NAME, ""),
+                ): selector.TextSelector(),
+                vol.Required(
+                    CONF_ROOM_A,
+                    default=room_a,
+                ): selector.SelectSelector(room_selector_config),
+                vol.Required(
+                    CONF_ROOM_B,
+                    default=room_b,
+                ): selector.SelectSelector(room_selector_config),
+                vol.Required(
+                    CONF_CONNECTION_TYPE,
+                    default=self._existing.get(
+                        CONF_CONNECTION_TYPE, CONNECTION_TYPES[0]
+                    ),
+                ): _static_select(CONNECTION_TYPES, "connection_type"),
             }
         )
 
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Add a connection."""
+
+        self._prepare()
+        if len(self._rooms()) < 2:
+            return self.async_abort(reason="need_two_rooms")
+        return await self._async_step_connection(user_input, "user")
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Reconfigure a connection."""
+
+        self._prepare()
+        if len(self._rooms()) < 2:
+            return self.async_abort(reason="need_two_rooms")
+        return await self._async_step_connection(user_input, "reconfigure")
+
+    async def _async_step_connection(
+        self,
+        user_input: dict[str, Any] | None,
+        step_id: str,
+    ) -> SubentryFlowResult:
+        """Handle room selection and connection type."""
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if user_input[CONF_ROOM_A] == user_input[CONF_ROOM_B]:
+                errors["base"] = "same_room"
+            else:
+                self._connection_data = dict(user_input)
+                return await self.async_step_connection_details()
+
         return self.async_show_form(
-            step_id="init",
-            data_schema=self.add_suggested_values_to_schema(schema, current),
+            step_id=step_id,
+            data_schema=self._connection_schema(),
+            errors=errors,
         )
+
+    async def async_step_connection_details(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Configure connection dimensions, state sensing and model tuning."""
+
+        connection_type = str(self._connection_data[CONF_CONNECTION_TYPE])
+        if user_input is not None:
+            details = self._normalise_connection_details(user_input, connection_type)
+            data = {**self._connection_data, **details}
+            name = str(data.get(CONF_CONNECTION_NAME, "")).strip()
+            if not name:
+                name = (
+                    f"{self._room_title(str(data[CONF_ROOM_A]))} ↔ "
+                    f"{self._room_title(str(data[CONF_ROOM_B]))}"
+                )
+            data[CONF_CONNECTION_NAME] = name
+            if self.source == SOURCE_USER:
+                return self.async_create_entry(title=name, data=data)
+            return self.async_update_and_abort(
+                self._get_entry(),
+                self._get_reconfigure_subentry(),
+                title=name,
+                data=data,
+            )
+
+        defaults = _model_defaults(dict(self._get_entry().data))
+        connection_model = self._existing.get(CONF_CONNECTION_MODEL, {})
+        fields: dict[Any, Any] = {
+            vol.Required(
+                CONF_WIDTH_CM,
+                default=_metres_to_centimetres(
+                    self._existing.get(CONF_WIDTH),
+                    0.85,
+                ),
+            ): _dimension_cm_selector(),
+        }
+        if connection_type == CONNECTION_TYPE_STAIRWELL:
+            fields[
+                vol.Required(
+                    CONF_LENGTH_CM,
+                    default=_metres_to_centimetres(
+                        self._existing.get(
+                            CONF_LENGTH,
+                            self._existing.get(CONF_HEIGHT),
+                        ),
+                        2.0,
+                    ),
+                )
+            ] = _dimension_cm_selector()
+        else:
+            fields[
+                vol.Required(
+                    CONF_HEIGHT_CM,
+                    default=_metres_to_centimetres(
+                        self._existing.get(
+                            CONF_HEIGHT,
+                            self._existing.get(CONF_LENGTH),
+                        ),
+                        2.0,
+                    ),
+                )
+            ] = _dimension_cm_selector()
+
+        fields[
+            vol.Optional(
+                CONF_STATE_ENTITY,
+                description={"suggested_value": self._existing.get(CONF_STATE_ENTITY)},
+            )
+        ] = _entity_selector(["binary_sensor", "input_boolean", "cover"])
+        fields[
+            vol.Required(
+                CONF_ASSUMED_STATE,
+                default=self._existing.get(
+                    CONF_ASSUMED_STATE,
+                    default_connection_assumed_state(connection_type).value,
+                ),
+            )
+        ] = _static_select(ASSUMED_STATES, "assumed_state")
+        fields[vol.Required(CONF_CONNECTION_MODEL)] = section(
+            vol.Schema(
+                {
+                    vol.Required(
+                        CONF_TRANSFER_EFFICIENCY,
+                        default=connection_model.get(
+                            CONF_TRANSFER_EFFICIENCY,
+                            defaults[CONF_TRANSFER_EFFICIENCY],
+                        ),
+                    ): _ratio_selector(),
+                    vol.Required(
+                        CONF_CLOSED_TRANSMISSION,
+                        default=self._existing.get(
+                            CONF_CLOSED_TRANSMISSION,
+                            0.0,
+                        ),
+                    ): _ratio_selector(),
+                    vol.Required(
+                        CONF_INVERT_STATE,
+                        default=self._existing.get(CONF_INVERT_STATE, False),
+                    ): selector.BooleanSelector(),
+                }
+            ),
+            SectionConfig(collapsed=True),
+        )
+
+        return self.async_show_form(
+            step_id="connection_details",
+            data_schema=vol.Schema(fields),
+        )
+
+    def _normalise_connection_details(
+        self,
+        user_input: dict[str, Any],
+        connection_type: str,
+    ) -> dict[str, Any]:
+        """Convert UI-specific connection fields to persisted model data."""
+
+        data = dict(user_input)
+        connection_model = dict(data.pop(CONF_CONNECTION_MODEL))
+        data[CONF_WIDTH] = _centimetres_to_metres(data.pop(CONF_WIDTH_CM))
+        if connection_type == CONNECTION_TYPE_STAIRWELL:
+            data[CONF_LENGTH] = _centimetres_to_metres(data.pop(CONF_LENGTH_CM))
+        else:
+            data[CONF_HEIGHT] = _centimetres_to_metres(data.pop(CONF_HEIGHT_CM))
+
+        data[CONF_INVERT_STATE] = bool(connection_model[CONF_INVERT_STATE])
+        data[CONF_CLOSED_TRANSMISSION] = float(
+            connection_model[CONF_CLOSED_TRANSMISSION]
+        )
+        data[CONF_CONNECTION_MODEL] = {
+            CONF_TRANSFER_EFFICIENCY: float(
+                connection_model[CONF_TRANSFER_EFFICIENCY]
+            )
+        }
+        return data
+

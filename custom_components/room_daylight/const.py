@@ -1,37 +1,119 @@
-"""Constants for Room Daylight."""
+"""Constants for the Room Daylight integration."""
+
+from __future__ import annotations
+
+from enum import StrEnum
 
 DOMAIN = "room_daylight"
+NAME = "Room Daylight"
 
-# Config-entry keys.
-CONF_OUTSIDE_ILLUMINANCE = "outside_illuminance"
+SUBENTRY_TYPE_ROOM = "room"
+SUBENTRY_TYPE_CONNECTION = "connection"
+
+CONF_OUTDOOR_ILLUMINANCE_ENTITY = "outdoor_illuminance_entity"
 CONF_SUN_ENTITY = "sun_entity"
-CONF_FLOOR_AREA = "floor_area"
-CONF_WINDOW_COUNT = "window_count"
-CONF_WINDOWS = "windows"
-CONF_WIDTH = "width"
-CONF_HEIGHT = "height"
-CONF_AZIMUTH = "azimuth"
+CONF_MODEL_DEFAULTS = "model_defaults"
+CONF_DIFFUSE_FRACTION = "diffuse_fraction"
+CONF_GLAZING_TRANSMISSION = "glazing_transmission"
+CONF_DAYLIGHT_UTILISATION = "daylight_utilisation"
+CONF_TRANSFER_EFFICIENCY = "transfer_efficiency"
+CONF_SENSOR_CORRECTION_STRENGTH = "sensor_correction_strength"
+
+CONF_ROOM_NAME = "room_name"
+CONF_FLOOR_AREA = "floor_area_m2"
+CONF_AREA_ID = "area_id"
+CONF_OPENING_COUNT = "opening_count"
+CONF_OPENINGS = "openings"
+CONF_INDOOR_LUX_SENSORS = "indoor_lux_sensors"
+CONF_ARTIFICIAL_LIGHT_ENTITIES = "artificial_light_entities"
+CONF_ROOM_MODEL = "room_model"
+
+CONF_OPENING_ID = "id"
+CONF_OPENING_NAME = "name"
+CONF_OPENING_TYPE = "type"
+CONF_WIDTH = "width_m"
+CONF_HEIGHT = "height_m"
+CONF_LENGTH = "length_m"
+# UI-only dimension keys. Config flows present centimetres while persisted data
+# remains in metres for the calculation/model layer.
+CONF_WIDTH_CM = "width_cm"
+CONF_HEIGHT_CM = "height_cm"
+CONF_LENGTH_CM = "length_cm"
+CONF_AZIMUTH = "azimuth_deg"
+CONF_TILT = "tilt_deg"
+CONF_ROOF_PITCH = "roof_pitch_deg"
 CONF_COVER_ENTITY = "cover_entity"
 CONF_TRANSMISSION = "transmission"
-CONF_INDOOR_ILLUMINANCE = "indoor_illuminance"
-CONF_ARTIFICIAL_LIGHTS = "artificial_lights"
+CONF_OPENING_MODEL = "opening_model"
+CONF_ASSUMED_STATE = "assumed_state"
 
-# Flow-only key. This value is never persisted to the config entry.
-CONF_SHOW_ADVANCED = "show_advanced"
+OPENING_TYPE_WALL = "wall"
+OPENING_TYPE_ROOFLIGHT = "rooflight"
+OPENING_TYPE_CUSTOM = "custom"
+OPENING_TYPES = (
+    OPENING_TYPE_WALL,
+    OPENING_TYPE_ROOFLIGHT,
+    OPENING_TYPE_CUSTOM,
+)
 
-# Advanced model parameters persisted per room.
-CONF_CALIBRATION = "calibration"
-CONF_DAYLIGHT_GAIN = "daylight_gain"
-CONF_DIFFUSE_BASE = "diffuse_base"
-CONF_SENSOR_BLEND = "sensor_blend"
-CONF_SENSOR_MIN_RATIO = "sensor_min_ratio"
-CONF_SENSOR_MAX_RATIO = "sensor_max_ratio"
+CONF_CONNECTION_NAME = "connection_name"
+CONF_ROOM_A = "room_a"
+CONF_ROOM_B = "room_b"
+CONF_CONNECTION_TYPE = "connection_type"
+CONF_STATE_ENTITY = "state_entity"
+CONF_INVERT_STATE = "invert_state"
+CONF_CLOSED_TRANSMISSION = "closed_transmission"
+CONF_CONNECTION_MODEL = "connection_model"
+
+CONNECTION_TYPE_DOOR = "door"
+CONNECTION_TYPE_ARCHWAY = "archway"
+CONNECTION_TYPE_STAIRWELL = "stairwell"
+CONNECTION_TYPE_CUSTOM = "custom"
+CONNECTION_TYPES = (
+    CONNECTION_TYPE_DOOR,
+    CONNECTION_TYPE_ARCHWAY,
+    CONNECTION_TYPE_STAIRWELL,
+    CONNECTION_TYPE_CUSTOM,
+)
+
+
+class AssumedState(StrEnum):
+    """Fallback state used when an opening has no usable state entity."""
+
+    OPEN = "open"
+    CLOSED = "closed"
+
+
+ASSUMED_STATES = tuple(state.value for state in AssumedState)
+DEFAULT_OPENING_ASSUMED_STATE = AssumedState.OPEN
+DEFAULT_CONNECTION_ASSUMED_STATES = {
+    CONNECTION_TYPE_DOOR: AssumedState.CLOSED,
+    CONNECTION_TYPE_ARCHWAY: AssumedState.OPEN,
+    CONNECTION_TYPE_STAIRWELL: AssumedState.OPEN,
+    CONNECTION_TYPE_CUSTOM: AssumedState.OPEN,
+}
+
+
+def default_connection_assumed_state(connection_type: str) -> AssumedState:
+    """Return the initial assumed state for a connection type."""
+
+    return DEFAULT_CONNECTION_ASSUMED_STATES.get(
+        connection_type,
+        AssumedState.OPEN,
+    )
+
 
 DEFAULT_SUN_ENTITY = "sun.sun"
-DEFAULT_WINDOW_TRANSMISSION = 0.65
-DEFAULT_CALIBRATION = 1.0
-DEFAULT_DAYLIGHT_GAIN = 0.15
-DEFAULT_DIFFUSE_BASE = 0.35
-DEFAULT_SENSOR_BLEND = 0.25
-DEFAULT_SENSOR_MIN_RATIO = 0.50
-DEFAULT_SENSOR_MAX_RATIO = 2.00
+DEFAULT_DIFFUSE_FRACTION = 0.35
+DEFAULT_GLAZING_TRANSMISSION = 0.70
+DEFAULT_DAYLIGHT_UTILISATION = 0.35
+DEFAULT_TRANSFER_EFFICIENCY = 0.65
+DEFAULT_SENSOR_CORRECTION_STRENGTH = 0.35
+
+MIN_FLOOR_AREA_M2 = 0.5
+MAX_FLOOR_AREA_M2 = 1000.0
+MIN_OPENING_DIMENSION_M = 0.05
+MAX_OPENING_DIMENSION_M = 30.0
+MAX_EXTERIOR_OPENINGS = 20
+MAX_NETWORK_ITERATIONS = 50
+NETWORK_CONVERGENCE_LUX = 0.1

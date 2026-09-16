@@ -1,116 +1,328 @@
 {
   "title": "Room Daylight",
   "config": {
-    "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "Crear un sensor de luz diurna para una habitación",
-        "description": "Configure the room and the source entities used to estimate its natural daylight. Window details are entered on the next step.",
+        "title": "Configurar Room Daylight",
+        "description": "Elige las fuentes de luz natural para toda la vivienda. Las habitaciones y conexiones se gestionan como subentradas después de la configuración.",
         "data": {
-          "name": "Nombre de la habitación *",
-          "outside_illuminance": "Sensor de iluminancia exterior *",
-          "sun_entity": "Entidad Sol *",
-          "floor_area": "Superficie *",
-          "window_count": "Número de ventanas / huecos acristalados *",
-          "indoor_illuminance": "Sensores de iluminancia interior opcionales",
-          "artificial_lights": "Luces artificiales que afectan a los sensores",
-          "show_advanced": "Configure advanced model settings"
+          "outdoor_illuminance_entity": "Iluminancia exterior",
+          "sun_entity": "Entidad Sol"
+        },
+        "sections": {
+          "model_defaults": {
+            "name": "Valores predeterminados del modelo",
+            "description": "Valores predeterminados para habitaciones, acristalamientos y conexiones nuevos. Son parámetros heurísticos orientados a la automatización, no ajustes de simulación arquitectónica.",
+            "data": {
+              "diffuse_fraction": "Fracción de luz natural difusa",
+              "glazing_transmission": "Transmisión del acristalamiento",
+              "daylight_utilisation": "Aprovechamiento de luz natural en la habitación",
+              "transfer_efficiency": "Eficiencia de transferencia entre habitaciones",
+              "sensor_correction_strength": "Intensidad de corrección de sensores interiores"
+            },
+            "data_description": {
+              "diffuse_fraction": "Proporción de la luz natural entrante que se trata como luz difusa del cielo en lugar de luz solar directa.",
+              "glazing_transmission": "Fracción predeterminada de luz natural transmitida por los acristalamientos exteriores recién configurados.",
+              "daylight_utilisation": "Fracción predeterminada, a nivel de habitación, de la luz natural admitida que se considera iluminancia útil.",
+              "transfer_efficiency": "Eficiencia predeterminada aplicada cuando la luz natural se transfiere mediante nuevas conexiones entre habitaciones.",
+              "sensor_correction_strength": "Intensidad de mezcla predeterminada para la corrección con sensores de lux interiores locales en habitaciones nuevas."
+            }
+          }
         },
         "data_description": {
-          "name": "A friendly name for this room, for example Living Room or Kitchen.",
-          "outside_illuminance": "A sensor with the Illuminance device class that represents the current outdoor light level in lux. This can be a physical outdoor lux sensor or an estimated source such as the Illuminance integration.",
-          "sun_entity": "A Home Assistant Sun entity that exposes the current solar azimuth and elevation. The standard Sun integration normally provides sun.sun.",
-          "floor_area": "The approximate internal floor area of the room in square metres. Length × width is usually sufficient; exact architectural precision is not required.",
-          "window_count": "How many separate external windows, glazed doors, or other glazed openings contribute daylight to this room.",
-          "indoor_illuminance": "Optional illuminance sensors inside the room. Their readings only provide a bounded correction to the calculated estimate, so local bright or dark spots cannot dominate it.",
-          "artificial_lights": "Select lights that materially affect the chosen indoor illuminance sensors. Indoor sensor correction is ignored whenever any selected light is on.",
-          "show_advanced": "Adds advanced tuning fields during setup. Leave this off unless you want to override Room Daylight's recommended model defaults."
+          "outdoor_illuminance_entity": "Un sensor de iluminancia exterior que informa del nivel de luz exterior actual en lux.",
+          "sun_entity": "La entidad Sol de Home Assistant utilizada para el azimut y la elevación solares."
         }
       },
       "reconfigure": {
-        "title": "Reconfigure room daylight",
-        "description": "Update the daylight source, Sun entity, room size, or windows. Indoor illuminance sensors and artificial-light exclusions can be changed from Configure / Options.",
+        "title": "Reconfigurar Room Daylight",
+        "description": "Actualiza las fuentes globales de luz natural o los parámetros predeterminados del modelo.",
         "data": {
-          "outside_illuminance": "Sensor de iluminancia exterior *",
-          "sun_entity": "Entidad Sol *",
-          "floor_area": "Superficie *",
-          "window_count": "Número de ventanas / huecos acristalados *",
-          "show_advanced": "Configure advanced model settings"
+          "outdoor_illuminance_entity": "Iluminancia exterior",
+          "sun_entity": "Entidad Sol"
+        },
+        "sections": {
+          "model_defaults": {
+            "name": "Valores predeterminados del modelo",
+            "description": "La fracción de luz natural difusa se aplica globalmente. Los demás valores son predeterminados para nuevas habitaciones, aberturas y conexiones; las subentradas existentes no cambian.",
+            "data": {
+              "diffuse_fraction": "Fracción de luz natural difusa",
+              "glazing_transmission": "Transmisión del acristalamiento",
+              "daylight_utilisation": "Aprovechamiento de luz natural en la habitación",
+              "transfer_efficiency": "Eficiencia de transferencia entre habitaciones",
+              "sensor_correction_strength": "Intensidad de corrección de sensores interiores"
+            },
+            "data_description": {
+              "diffuse_fraction": "Proporción de la luz natural entrante que se trata como luz difusa del cielo en lugar de luz solar directa.",
+              "glazing_transmission": "Fracción predeterminada de luz natural transmitida por los acristalamientos exteriores recién configurados.",
+              "daylight_utilisation": "Fracción predeterminada, a nivel de habitación, de la luz natural admitida que se considera iluminancia útil.",
+              "transfer_efficiency": "Eficiencia predeterminada aplicada cuando la luz natural se transfiere mediante nuevas conexiones entre habitaciones.",
+              "sensor_correction_strength": "Intensidad de mezcla predeterminada para la corrección con sensores de lux interiores locales en habitaciones nuevas."
+            }
+          }
         },
         "data_description": {
-          "outside_illuminance": "A sensor with the Illuminance device class that represents the current outdoor light level in lux.",
-          "sun_entity": "A Home Assistant Sun entity exposing solar azimuth and elevation.",
-          "floor_area": "Approximate internal floor area in square metres.",
-          "window_count": "Changing this value lets you add or remove configured windows during the following steps.",
-          "show_advanced": "Open the advanced model step and show per-window transmission. Existing advanced values are preserved when this is left off."
-        }
-      },
-      "window": {
-        "title": "Ventana {window_number} de {window_total}",
-        "description": "Enter one external glazed opening. Measure the approximate glazed opening rather than the wall. Azimuth is the compass direction the window faces outwards: North 0°, East 90°, South 180°, West 270°. A phone compass can be used if needed.",
-        "data": {
-          "width": "Anchura acristalada *",
-          "height": "Altura acristalada *",
-          "azimuth": "Azimut hacia el exterior *",
-          "cover_entity": "Entidad opcional de persiana / cortina",
-          "transmission": "Window transmission *"
-        },
-        "data_description": {
-          "width": "Approximate width of the glazed opening in metres. For French or patio doors, measure the complete glazed doorway.",
-          "height": "Approximate height of the glazed opening in metres.",
-          "azimuth": "Compass bearing in degrees for the direction this window faces outwards. North = 0°, East = 90°, South = 180°, West = 270°.",
-          "cover_entity": "Optional cover, binary sensor, or input boolean representing whether this opening is covered. A fully closed cover, or an on binary/input boolean, excludes this window from the calculation.",
-          "transmission": "Fraction of exterior daylight retained after glazing and frame losses. 1.00 means no loss; the recommended default is 0.65."
-        }
-      },
-      "advanced": {
-        "title": "Advanced daylight model",
-        "description": "These values tune the daylight model for this room. The defaults are recommended for most installations. Change them only when you have a reason to calibrate the model.",
-        "data": {
-          "calibration": "Room calibration *",
-          "daylight_gain": "Daylight gain *",
-          "diffuse_base": "Diffuse daylight factor *",
-          "sensor_blend": "Indoor sensor blend *",
-          "sensor_min_ratio": "Minimum sensor correction ratio *",
-          "sensor_max_ratio": "Maximum sensor correction ratio *"
-        },
-        "data_description": {
-          "calibration": "Final multiplier applied to the room model. 1.00 leaves the result unchanged. Use this only when the room is consistently brighter or darker than the model predicts.",
-          "daylight_gain": "Controls how strongly effective window area contributes to indoor daylight. The recommended default is 0.15.",
-          "diffuse_base": "Minimum orientation contribution from a window when it is not facing the sun. 0 disables diffuse contribution; 1 treats orientation as irrelevant. The recommended default is 0.35.",
-          "sensor_blend": "How strongly optional indoor lux sensors influence the final estimate. 0 ignores them; 1 uses the bounded indoor reading entirely. The recommended default is 0.25.",
-          "sensor_min_ratio": "Lowest indoor-sensor value allowed relative to the physical model before blending. 0.50 means a low sensor reading cannot be treated as less than half of the model estimate.",
-          "sensor_max_ratio": "Highest indoor-sensor value allowed relative to the physical model before blending. 2.00 means a high sensor reading cannot be treated as more than twice the model estimate."
+          "outdoor_illuminance_entity": "Un sensor de iluminancia exterior que informa del nivel de luz exterior actual en lux.",
+          "sun_entity": "La entidad Sol de Home Assistant utilizada para el azimut y la elevación solares."
         }
       }
-    },
-    "error": {
-      "required": "This field is required.",
-      "positive_number": "Enter a number greater than zero.",
-      "azimuth_range": "Enter an azimuth from 0° up to, but not including, 360°.",
-      "window_count_range": "Enter between 1 and 20 windows.",
-      "zero_to_one": "Enter a value from 0 to 1.",
-      "advanced_range": "Enter a value within the allowed range for this field.",
-      "sensor_ratio_order": "Maximum sensor correction must be greater than or equal to the minimum correction."
-    },
-    "abort": {
-      "already_configured": "A room with this name is already configured.",
-      "reconfigure_successful": "Room Daylight was reconfigured successfully."
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Room Daylight options",
-        "description": "Manage optional indoor sensor correction and the artificial lights that temporarily disable it.",
-        "data": {
-          "indoor_illuminance": "Sensores de iluminancia interior opcionales",
-          "artificial_lights": "Luces artificiales que afectan a los sensores"
+  "config_subentries": {
+    "room": {
+      "title": "Habitación",
+      "initiate_flow": {
+        "user": "Añadir habitación",
+        "reconfigure": "Reconfigurar habitación"
+      },
+      "entry_type": "Habitación",
+      "step": {
+        "user": {
+          "title": "Añadir habitación",
+          "description": "Configura una habitación. Las habitaciones interiores pueden no tener aberturas acristaladas exteriores.",
+          "data": {
+            "room_name": "Nombre de la habitación",
+            "floor_area_m2": "Superficie de suelo (m²)",
+            "area_id": "Área de Home Assistant",
+            "opening_count": "Aberturas acristaladas exteriores",
+            "indoor_lux_sensors": "Sensores de iluminancia interiores",
+            "artificial_light_entities": "Luces artificiales que afectan a esos sensores"
+          },
+          "sections": {
+            "room_model": {
+              "name": "Modelo de habitación",
+              "description": "Ajustes específicos de la habitación. Los valores mostrados proceden de la configuración global del modelo.",
+              "data": {
+                "daylight_utilisation": "Aprovechamiento de luz natural",
+                "sensor_correction_strength": "Intensidad de corrección de sensores interiores"
+              },
+              "data_description": {
+                "daylight_utilisation": "Escala la luz natural exterior admitida para obtener una estimación de iluminancia de la habitación orientada a la automatización.",
+                "sensor_correction_strength": "Controla cuánto ajustan las lecturas locales de lux válidas el valor modelado de luz natural."
+              }
+            }
+          },
+          "data_description": {
+            "room_name": "Un nombre descriptivo para la habitación. Cambiarlo no modifica la identidad de la habitación.",
+            "floor_area_m2": "Superficie aproximada utilizada para escalar la luz natural exterior y transferida.",
+            "area_id": "Área opcional de Home Assistant utilizada como área sugerida para el dispositivo de la habitación.",
+            "opening_count": "Número de superficies acristaladas exteriores que dejan entrar luz natural directamente desde el exterior. Usa 0 para habitaciones interiores.",
+            "indoor_lux_sensors": "Sensores de iluminancia locales opcionales utilizados únicamente para corregir esta habitación después de la transferencia por la red.",
+            "artificial_light_entities": "Luces o interruptores cuyo estado activo o no disponible desactiva la corrección mediante sensores interiores."
+          }
         },
-        "data_description": {
-          "indoor_illuminance": "Select one or more illuminance sensors in this room. These readings reinforce the model but are deliberately prevented from overriding it completely.",
-          "artificial_lights": "Select lights that materially affect those sensors. When any selected light is on, indoor readings are ignored so artificial light is not mistaken for daylight."
+        "reconfigure": {
+          "title": "Reconfigurar habitación",
+          "description": "Actualiza la habitación, sus sensores locales y sus aberturas acristaladas exteriores.",
+          "data": {
+            "room_name": "Nombre de la habitación",
+            "floor_area_m2": "Superficie de suelo (m²)",
+            "area_id": "Área de Home Assistant",
+            "opening_count": "Aberturas acristaladas exteriores",
+            "indoor_lux_sensors": "Sensores de iluminancia interiores",
+            "artificial_light_entities": "Luces artificiales que afectan a esos sensores"
+          },
+          "sections": {
+            "room_model": {
+              "name": "Modelo de habitación",
+              "description": "Ajusta cuánto influyen en esta habitación la luz natural exterior y los sensores de lux locales.",
+              "data": {
+                "daylight_utilisation": "Aprovechamiento de luz natural",
+                "sensor_correction_strength": "Intensidad de corrección de sensores interiores"
+              },
+              "data_description": {
+                "daylight_utilisation": "Escala la luz natural exterior admitida para obtener una estimación de iluminancia de la habitación orientada a la automatización.",
+                "sensor_correction_strength": "Controla cuánto ajustan las lecturas locales de lux válidas el valor modelado de luz natural."
+              }
+            }
+          },
+          "data_description": {
+            "room_name": "Un nombre descriptivo para la habitación. Cambiarlo no modifica la identidad de la habitación.",
+            "floor_area_m2": "Superficie aproximada utilizada para escalar la luz natural exterior y transferida.",
+            "area_id": "Área opcional de Home Assistant utilizada como área sugerida para el dispositivo de la habitación.",
+            "opening_count": "Número de superficies acristaladas exteriores que dejan entrar luz natural directamente desde el exterior. Usa 0 para habitaciones interiores.",
+            "indoor_lux_sensors": "Sensores de iluminancia locales opcionales utilizados únicamente para corregir esta habitación después de la transferencia por la red.",
+            "artificial_light_entities": "Luces o interruptores cuyo estado activo o no disponible desactiva la corrección mediante sensores interiores."
+          }
+        },
+        "opening": {
+          "title": "Abertura exterior {number} de {total}",
+          "description": "Elige cómo está instalada esta superficie acristalada.",
+          "data": {
+            "type": "Tipo de abertura"
+          },
+          "data_description": {
+            "type": "Elige la geometría que mejor describa esta superficie acristalada exterior."
+          }
+        },
+        "opening_details": {
+          "title": "Abertura exterior {number} de {total}",
+          "description": "Configura las dimensiones acristaladas y la orientación hacia el exterior. El azimut se mide en sentido horario desde el norte (0° norte, 90° este, 180° sur, 270° oeste).",
+          "data": {
+            "name": "Nombre de la abertura",
+            "width_cm": "Anchura (cm)",
+            "height_cm": "Altura (cm)",
+            "length_cm": "Longitud (cm)",
+            "roof_pitch_deg": "Pendiente del tejado / inclinación de la abertura (°)",
+            "azimuth_deg": "Dirección exterior / azimut (°)",
+            "tilt_deg": "Inclinación respecto a la horizontal (°)",
+            "cover_entity": "Persiana / cortina",
+            "assumed_state": "Estado supuesto de la persiana"
+          },
+          "data_description": {
+            "name": "Un nombre descriptivo para identificar esta abertura acristalada en los diagnósticos.",
+            "width_cm": "Anchura acristalada en centímetros.",
+            "height_cm": "Altura acristalada en centímetros.",
+            "length_cm": "Longitud acristalada en centímetros para una claraboya.",
+            "roof_pitch_deg": "Inclinación respecto a la horizontal. 0° es plana y orientada al cielo; 90° es vertical.",
+            "azimuth_deg": "Dirección de brújula hacia el exterior medida en sentido horario desde el norte.",
+            "tilt_deg": "Inclinación personalizada del plano respecto a la horizontal. 0° mira al cielo; 90° es vertical.",
+            "cover_entity": "Cubierta opcional que controla esta abertura. Si su estado no se puede usar, Room Daylight recurre al estado supuesto configurado para la persiana.",
+            "assumed_state": "Estado usado cuando no hay una entidad de persiana/cortina configurada o cuando la cubierta configurada no está disponible o tiene un estado desconocido."
+          },
+          "sections": {
+            "opening_model": {
+              "name": "Modelo de abertura exterior",
+              "description": "Propiedades ópticas utilizadas para modelar la luz natural que entra por este acristalamiento.",
+              "data": {
+                "transmission": "Transmisión del acristalamiento"
+              },
+              "data_description": {
+                "transmission": "Fracción de la luz natural incidente transmitida por el acristalamiento antes de cualquier reducción por la cubierta."
+              }
+            }
+          }
         }
+      },
+      "error": {
+        "name_required": "Introduce un nombre."
+      }
+    },
+    "connection": {
+      "title": "Conexión",
+      "initiate_flow": {
+        "user": "Añadir conexión entre habitaciones",
+        "reconfigure": "Reconfigurar conexión entre habitaciones"
+      },
+      "entry_type": "Conexión entre habitaciones",
+      "step": {
+        "user": {
+          "title": "Añadir conexión entre habitaciones",
+          "description": "Crea una abertura física por la que la luz natural pueda pasar entre dos habitaciones configuradas. Se permiten varias conexiones entre las mismas habitaciones.",
+          "data": {
+            "connection_name": "Nombre de la conexión (opcional)",
+            "room_a": "Habitación A",
+            "room_b": "Habitación B",
+            "connection_type": "Tipo de conexión"
+          },
+          "data_description": {
+            "connection_name": "Nombre descriptivo opcional. Déjalo vacío para usar automáticamente los nombres de las dos habitaciones.",
+            "room_a": "Una de las habitaciones de esta abertura física.",
+            "room_b": "La habitación al otro lado de la abertura.",
+            "connection_type": "Elige la geometría que mejor describa esta abertura interior."
+          }
+        },
+        "reconfigure": {
+          "title": "Reconfigurar conexión entre habitaciones",
+          "description": "Actualiza las habitaciones y el tipo de abertura. El comportamiento de la conexión se configura en el siguiente paso.",
+          "data": {
+            "connection_name": "Nombre de la conexión (opcional)",
+            "room_a": "Habitación A",
+            "room_b": "Habitación B",
+            "connection_type": "Tipo de conexión"
+          },
+          "data_description": {
+            "connection_name": "Nombre descriptivo opcional. Déjalo vacío para usar automáticamente los nombres de las dos habitaciones.",
+            "room_a": "Una de las habitaciones de esta abertura física.",
+            "room_b": "La habitación al otro lado de la abertura.",
+            "connection_type": "Elige la geometría que mejor describa esta abertura interior."
+          }
+        },
+        "connection_details": {
+          "title": "Detalles de la conexión",
+          "description": "Configura las dimensiones y la detección de estado opcional. El comportamiento avanzado está en Modelo de conexión.",
+          "data": {
+            "width_cm": "Anchura de la abertura (cm)",
+            "height_cm": "Altura de la abertura (cm)",
+            "length_cm": "Longitud de la abertura (cm)",
+            "state_entity": "Entidad de estado de puerta / abertura",
+            "assumed_state": "Estado supuesto de la conexión"
+          },
+          "data_description": {
+            "width_cm": "Anchura de la abertura en centímetros.",
+            "height_cm": "Altura de la abertura en centímetros.",
+            "length_cm": "Longitud aproximada de la abertura del suelo en centímetros para una escalera.",
+            "state_entity": "Sensor binario, booleano de entrada o cubierta opcional que indica si la abertura está abierta. Un estado de entidad utilizable prevalece sobre la suposición configurada.",
+            "assumed_state": "Estado usado cuando no hay una entidad de puerta/abertura configurada o cuando la entidad configurada no está disponible o tiene un estado desconocido."
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Modelo de conexión",
+              "description": "Comportamiento avanzado para la transferencia de luz natural a través de esta abertura.",
+              "data": {
+                "transfer_efficiency": "Eficiencia de transferencia",
+                "closed_transmission": "Transmisión cuando está cerrada",
+                "invert_state": "Invertir estado"
+              },
+              "data_description": {
+                "transfer_efficiency": "Escala la transferencia de luz natural a través de esta abertura después de aplicar el área y la transmisión según el estado de apertura.",
+                "closed_transmission": "Fracción de luz natural que puede pasar cuando la conexión está cerrada, útil para puertas interiores acristaladas.",
+                "invert_state": "Invierte la semántica abierto/cerrado de un estado de entidad válido. El estado supuesto configurado no se invierte."
+              }
+            }
+          }
+        }
+      },
+      "error": {
+        "same_room": "La habitación A y la habitación B deben ser distintas."
+      },
+      "abort": {
+        "need_two_rooms": "Configura al menos dos habitaciones antes de añadir una conexión."
+      }
+    }
+  },
+  "selector": {
+    "opening_type": {
+      "options": {
+        "wall": "Ventana de pared / puerta exterior acristalada",
+        "rooflight": "Claraboya / ventana de tejado",
+        "custom": "Plano acristalado personalizado"
+      }
+    },
+    "connection_type": {
+      "options": {
+        "door": "Puerta / hueco de puerta",
+        "archway": "Paso abierto",
+        "stairwell": "Hueco de escalera",
+        "custom": "Abertura personalizada"
+      }
+    },
+    "assumed_state": {
+      "options": {
+        "open": "Abierto",
+        "closed": "Cerrado"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "estimated_daylight": {
+        "name": "Luz natural estimada"
+      },
+      "native_daylight": {
+        "name": "Luz natural propia"
+      },
+      "transferred_daylight": {
+        "name": "Luz natural transferida"
+      },
+      "indoor_sensor_median": {
+        "name": "Mediana de sensores interiores"
+      },
+      "indoor_sensor_adjustment": {
+        "name": "Ajuste de sensores interiores"
+      },
+      "effective_daylight_ratio": {
+        "name": "Proporción efectiva de luz natural"
       }
     }
   }

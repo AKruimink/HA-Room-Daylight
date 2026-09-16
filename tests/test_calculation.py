@@ -1,158 +1,204 @@
-"""Unit tests for the pure Room Daylight model."""
+"""Tests for exterior daylight and local sensor correction."""
 
-import importlib.util
-from pathlib import Path
-import sys
-import types
-import unittest
+from dataclasses import replace
+from math import cos, radians, sin
 
-ROOT = Path(__file__).resolve().parents[1]
-PACKAGE_DIR = ROOT / "custom_components" / "room_daylight"
+import pytest
 
-# Load the pure model without importing the Home Assistant integration package.
-# This keeps these tests fast and independent of a Home Assistant installation.
-package = types.ModuleType("room_daylight_testpkg")
-package.__path__ = [str(PACKAGE_DIR)]
-sys.modules["room_daylight_testpkg"] = package
+from custom_components.room_daylight.calculation import (
+    apply_sensor_correction,
+    direct_incidence_factor,
+    estimate_native_daylight,
+    sky_view_factor,
+)
+from custom_components.room_daylight.const import AssumedState
+from custom_components.room_daylight.models import ExteriorOpening, RoomDefinition
 
-for module_name in ("const", "calculation"):
-    spec = importlib.util.spec_from_file_location(
-        f"room_daylight_testpkg.{module_name}",
-        PACKAGE_DIR / f"{module_name}.py",
+
+def _opening(*, tilt: float = 90.0, azimuth: float = 180.0) -> ExteriorOpening:
+    return ExteriorOpening(
+        opening_id="opening-1",
+        name="Test opening",
+        opening_type="custom",
+        width_m=1.0,
+        height_m=1.0,
+        azimuth_deg=azimuth,
+        tilt_deg=tilt,
+        transmission=1.0,
     )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-
-calculation = sys.modules["room_daylight_testpkg.calculation"]
-
-DEFAULT_WINDOW = {"width": 2.0, "height": 1.2, "azimuth": 180}
-LIVING_ROOM_WINDOWS = [
-    {"width": 1.77, "height": 1.98, "azimuth": 180},
-    {"width": 1.30, "height": 1.38, "azimuth": 270},
-]
 
 
-class DaylightCalculationTests(unittest.TestCase):
-    """Tests for room daylight calculations and diagnostics."""
-
-    def estimate(self, **overrides):
-        """Return an estimate with sensible test defaults."""
-        values = {
-            "outside_lux": 10_000,
-            "sun_azimuth": 180,
-            "sun_elevation": 20,
-            "floor_area": 20,
-            "windows": [DEFAULT_WINDOW],
-        }
-        values.update(overrides)
-        return calculation.estimate_room_daylight(**values)
-
-    def test_south_window_gets_more_when_sun_is_south(self):
-        facing = self.estimate(sun_azimuth=180)
-        behind = self.estimate(sun_azimuth=0)
-
-        self.assertGreater(facing.final_lux, behind.final_lux)
-
-    def test_covered_window_contributes_nothing(self):
-        estimate = self.estimate(windows=[{**DEFAULT_WINDOW, "covered": True}])
-
-        self.assertEqual(estimate.final_lux, 0)
-        self.assertEqual(estimate.covered_windows, 1)
-        self.assertEqual(estimate.window_diagnostics[0].contribution_lux, 0)
-
-    def test_indoor_sensor_only_nudges_model(self):
-        base = self.estimate()
-        fused = self.estimate(indoor_lux_values=[100_000])
-
-        self.assertGreater(fused.final_lux, base.final_lux)
-        self.assertLessEqual(fused.final_lux, base.final_lux * 1.25 + 0.001)
-        self.assertGreater(fused.sensor_adjustment_lux, 0)
-
-    def test_multiple_sensor_median_resists_outlier(self):
-        estimate = self.estimate(indoor_lux_values=[100, 110, 5_000])
-
-        self.assertEqual(estimate.indoor_median_lux, 110)
-        self.assertEqual(estimate.indoor_sensor_min_lux, 100)
-        self.assertEqual(estimate.indoor_sensor_max_lux, 5_000)
-        self.assertEqual(estimate.indoor_sensor_spread_lux, 4_900)
-        self.assertEqual(estimate.indoor_sensor_count, 3)
-
-    def test_effective_daylight_ratio_matches_base_to_outdoor_ratio(self):
-        estimate = self.estimate(outside_lux=12_500, sun_elevation=30)
-        expected = (estimate.base_lux / 12_500) * 100
-
-        self.assertAlmostEqual(estimate.effective_daylight_ratio_pct, expected)
-
-    def test_window_contributions_add_up_to_base_estimate(self):
-        estimate = self.estimate(
-            outside_lux=13_000,
-            sun_azimuth=150,
-            sun_elevation=38,
-            floor_area=20.2,
-            windows=LIVING_ROOM_WINDOWS,
-        )
-        contribution_total = sum(
-            window.contribution_lux for window in estimate.window_diagnostics
-        )
-
-        self.assertAlmostEqual(contribution_total, estimate.base_lux)
-        self.assertEqual(len(estimate.window_diagnostics), 2)
-        self.assertTrue(
-            all(window.contribution_lux > 0 for window in estimate.window_diagnostics)
-        )
-
-    def test_negative_sensor_adjustment_is_reported(self):
-        common = {
-            "outside_lux": 13_000,
-            "sun_azimuth": 150,
-            "sun_elevation": 38,
-            "floor_area": 20.2,
-            "windows": LIVING_ROOM_WINDOWS,
-        }
-        base = self.estimate(**common)
-        fused = self.estimate(**common, indoor_lux_values=[150, 160, 170])
-
-        self.assertEqual(fused.indoor_median_lux, 160)
-        self.assertLess(fused.sensor_adjustment_lux, 0)
-        self.assertLess(fused.sensor_adjustment_pct, 0)
-        self.assertLess(fused.final_lux, base.final_lux)
-
-    def test_sensor_blend_can_be_disabled(self):
-        base = self.estimate()
-        fused = self.estimate(
-            indoor_lux_values=[100_000],
-            sensor_blend=0.0,
-        )
-
-        self.assertAlmostEqual(fused.final_lux, base.final_lux)
-        self.assertAlmostEqual(fused.sensor_adjustment_lux, 0.0)
-
-    def test_window_transmission_changes_window_contribution(self):
-        normal = self.estimate(
-            windows=[{**DEFAULT_WINDOW, "transmission": 0.65}]
-        )
-        low_transmission = self.estimate(
-            windows=[{**DEFAULT_WINDOW, "transmission": 0.20}]
-        )
-
-        self.assertGreater(normal.base_lux, low_transmission.base_lux)
-        self.assertAlmostEqual(
-            low_transmission.window_diagnostics[0].transmission,
-            0.20,
-        )
-
-    def test_advanced_model_parameters_change_result(self):
-        default = self.estimate()
-        calibrated = self.estimate(
-            calibration=1.20,
-            daylight_gain=0.20,
-            diffuse_base=0.50,
-        )
-
-        self.assertGreater(calibrated.base_lux, default.base_lux)
+def _room(openings: tuple[ExteriorOpening, ...]) -> RoomDefinition:
+    return RoomDefinition(
+        room_id="room-1",
+        name="Test room",
+        floor_area_m2=10.0,
+        openings=openings,
+        daylight_utilisation=1.0,
+        sensor_correction_strength=0.5,
+    )
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_vertical_window_incidence_matches_expected_geometry() -> None:
+    """A facade normal facing the sun receives cos(elevation) direct light."""
+
+    incidence = direct_incidence_factor(180.0, 90.0, 180.0, 30.0)
+    assert incidence == pytest.approx(cos(radians(30.0)))
+
+
+def test_horizontal_rooflight_strengthens_as_sun_rises() -> None:
+    """A rooflight receives more direct light from a higher sun."""
+
+    low = direct_incidence_factor(0.0, 0.0, 90.0, 10.0)
+    high = direct_incidence_factor(0.0, 0.0, 270.0, 70.0)
+
+    assert low == pytest.approx(sin(radians(10.0)))
+    assert high == pytest.approx(sin(radians(70.0)))
+    assert high > low
+
+
+def test_opposite_wall_receives_no_direct_component() -> None:
+    """Direct incidence is clipped when the sun is behind an opening."""
+
+    assert direct_incidence_factor(0.0, 90.0, 180.0, 30.0) == 0.0
+
+
+def test_sky_view_distinguishes_rooflight_and_vertical_window() -> None:
+    """Horizontal glazing sees twice the isotropic sky of vertical glazing."""
+
+    assert sky_view_factor(0.0) == pytest.approx(1.0)
+    assert sky_view_factor(90.0) == pytest.approx(0.5)
+
+
+def test_room_with_no_exterior_openings_has_zero_native_daylight() -> None:
+    result = estimate_native_daylight(
+        _room(()),
+        outdoor_lux=20_000.0,
+        sun_azimuth_deg=180.0,
+        sun_elevation_deg=40.0,
+        diffuse_fraction=0.35,
+    )
+    assert result.lux == 0.0
+    assert result.openings == ()
+
+
+def test_closed_cover_blocks_opening() -> None:
+    opening = _opening()
+    result = estimate_native_daylight(
+        _room((opening,)),
+        outdoor_lux=20_000.0,
+        sun_azimuth_deg=180.0,
+        sun_elevation_deg=40.0,
+        diffuse_fraction=0.35,
+        cover_openness={opening.opening_id: 0.0},
+    )
+    assert result.lux == 0.0
+    assert result.openings[0].effective_transmission == 0.0
+
+
+def test_native_daylight_is_bounded_by_outdoor_illuminance() -> None:
+    opening = ExteriorOpening(
+        opening_id="huge",
+        name="Huge rooflight",
+        opening_type="rooflight",
+        width_m=20.0,
+        height_m=20.0,
+        azimuth_deg=0.0,
+        tilt_deg=0.0,
+        transmission=1.0,
+    )
+    result = estimate_native_daylight(
+        _room((opening,)),
+        outdoor_lux=1_000.0,
+        sun_azimuth_deg=180.0,
+        sun_elevation_deg=90.0,
+        diffuse_fraction=0.0,
+    )
+    assert result.lux == pytest.approx(1_000.0)
+    assert sum(item.contribution_lux for item in result.openings) == pytest.approx(
+        result.lux
+    )
+
+
+def test_sensor_correction_uses_median_and_stays_local() -> None:
+    result = apply_sensor_correction(
+        100.0,
+        outdoor_lux=1_000.0,
+        sensor_values=[200.0, 220.0, 10_000.0],
+        correction_strength=0.5,
+        artificial_lights_active=False,
+    )
+    assert result.sensor_median_lux == 220.0
+    assert result.estimated_lux == pytest.approx(160.0)
+    assert result.adjustment_lux == pytest.approx(60.0)
+    assert result.correction_applied is True
+
+
+def test_artificial_light_suppresses_sensor_correction() -> None:
+    result = apply_sensor_correction(
+        100.0,
+        outdoor_lux=1_000.0,
+        sensor_values=[800.0],
+        correction_strength=1.0,
+        artificial_lights_active=True,
+    )
+    assert result.sensor_median_lux == 800.0
+    assert result.estimated_lux == 100.0
+    assert result.adjustment_lux == 0.0
+    assert result.correction_applied is False
+
+
+def test_direct_component_is_zero_below_horizon() -> None:
+    """Direct daylight is unavailable when the sun is below the horizon."""
+
+    assert direct_incidence_factor(180.0, 90.0, 180.0, -5.0) == 0.0
+
+
+def test_sensor_correction_ignores_invalid_samples() -> None:
+    """Unavailable and non-finite physical readings cannot skew correction."""
+
+    result = apply_sensor_correction(
+        100.0,
+        outdoor_lux=1_000.0,
+        sensor_values=[None, -1.0, float("nan"), float("inf"), 250.0],
+        correction_strength=1.0,
+        artificial_lights_active=False,
+    )
+
+    assert result.sensor_median_lux == 250.0
+    assert result.estimated_lux == 250.0
+
+
+def test_no_valid_sensor_values_leave_model_unchanged() -> None:
+    """Sensor correction is a no-op when no usable local reading exists."""
+
+    result = apply_sensor_correction(
+        125.0,
+        outdoor_lux=1_000.0,
+        sensor_values=[None, -10.0, float("nan")],
+        correction_strength=1.0,
+        artificial_lights_active=False,
+    )
+
+    assert result.sensor_median_lux is None
+    assert result.estimated_lux == 125.0
+    assert result.correction_applied is False
+
+
+def test_assumed_closed_blind_blocks_opening_without_runtime_state() -> None:
+    """The pure calculation honours an opening's configured fallback."""
+
+    opening = replace(
+        _opening(),
+        assumed_state=AssumedState.CLOSED,
+    )
+    result = estimate_native_daylight(
+        _room((opening,)),
+        outdoor_lux=20_000.0,
+        sun_azimuth_deg=180.0,
+        sun_elevation_deg=40.0,
+        diffuse_fraction=0.35,
+    )
+
+    assert result.lux == 0.0
+    assert result.openings[0].cover_openness == 0.0
