@@ -1,14 +1,15 @@
 {
   "domain": "room_daylight",
   "name": "Room Daylight",
-  "codeowners": ["@AKruimink"],
+  "codeowners": [
+    "@AKruimink"
+  ],
   "config_flow": true,
-  "dependencies": [],
   "documentation": "https://github.com/AKruimink/HA-Room-Daylight",
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/AKruimink/HA-Room-Daylight/issues",
   "requirements": [],
-  "version": "0.2.1"
+  "single_config_entry": true,
+  "version": "1.0.0"
 }
-

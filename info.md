@@ -1,5 +1,11 @@
 # Room Daylight
 
-Room Daylight creates Home Assistant illuminance sensors that estimate the natural daylight available inside individual rooms.
+Room Daylight estimates the natural daylight available inside individual rooms and exposes the result as a Home Assistant illuminance sensor.
 
-It combines an existing outdoor illuminance reading with the current sun position, room floor area, window dimensions and orientation, and optional window coverings. Existing indoor lux sensors can be used as bounded supporting inputs, and can automatically be ignored while selected artificial lights are on.
+It combines an outdoor lux reading with sun position, room floor area, window size and window orientation. Optional blinds or curtains can exclude covered windows, and optional indoor lux sensors can gently correct the estimate while artificial lights are off.
+
+Room Daylight does not calculate cloud or weather effects itself. The selected outdoor illuminance sensor should already represent current outdoor brightness.
+
+If you do not have a physical outdoor lux sensor, [Illuminance](https://github.com/pnbruckner/ha-illuminance) is a useful companion integration.
+
+Configuration is handled entirely through the Home Assistant UI, and each room can be reconfigured later.
