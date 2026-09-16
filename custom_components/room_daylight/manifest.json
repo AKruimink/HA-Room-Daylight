@@ -11,5 +11,5 @@
   "issue_tracker": "https://github.com/AKruimink/HA-Room-Daylight/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.2.1"
+  "version": "1.0.0"
 }
