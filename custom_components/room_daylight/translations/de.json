@@ -160,27 +160,37 @@
           "description": "Konfigurieren Sie die verglasten Abmessungen und die nach außen gerichtete Orientierung. Der Azimut wird im Uhrzeigersinn ab Norden gemessen (0° Nord, 90° Ost, 180° Süd, 270° West).",
           "data": {
             "name": "Name der Öffnung",
-            "width_m": "Breite (m)",
-            "height_m": "Höhe (m)",
-            "length_m": "Länge (m)",
+            "width_cm": "Breite (cm)",
+            "height_cm": "Höhe (cm)",
+            "length_cm": "Länge (cm)",
             "roof_pitch_deg": "Dachneigung / Öffnungsneigung (°)",
             "azimuth_deg": "Außenrichtung / Azimut (°)",
             "tilt_deg": "Neigung gegenüber der Horizontalen (°)",
             "cover_entity": "Jalousie / Vorhang",
-            "assumed_state": "Angenommener Jalousiezustand",
-            "transmission": "Lichtdurchlässigkeit der Verglasung"
+            "assumed_state": "Angenommener Jalousiezustand"
           },
           "data_description": {
             "name": "Ein benutzerfreundlicher Diagnosename für diese verglaste Öffnung.",
-            "width_m": "Verglaste Breite in Metern.",
-            "height_m": "Verglaste Höhe in Metern.",
-            "length_m": "Verglaste Länge in Metern für ein Dachfenster.",
+            "width_cm": "Verglaste Breite in Zentimetern.",
+            "height_cm": "Verglaste Höhe in Zentimetern.",
+            "length_cm": "Verglaste Länge in Zentimetern für ein Dachfenster.",
             "roof_pitch_deg": "Neigung gegenüber der Horizontalen. 0° ist flach und zum Himmel gerichtet; 90° ist vertikal.",
             "azimuth_deg": "Nach außen gerichtete Himmelsrichtung, im Uhrzeigersinn ab Norden gemessen.",
             "tilt_deg": "Benutzerdefinierte Ebenenneigung gegenüber der Horizontalen. 0° zeigt zum Himmel; 90° ist vertikal.",
             "cover_entity": "Optionale Abdeckung für diese Öffnung. Wenn ihr Zustand nicht verwendet werden kann, greift Room Daylight auf den konfigurierten angenommenen Jalousiezustand zurück.",
-            "assumed_state": "Zustand, der verwendet wird, wenn keine Jalousie-/Vorhangentität konfiguriert ist oder die konfigurierte Abdeckung nicht verfügbar bzw. unbekannt ist.",
-            "transmission": "Anteil des einfallenden Tageslichts, der durch die Verglasung übertragen wird, bevor eine Abdeckung es reduziert."
+            "assumed_state": "Zustand, der verwendet wird, wenn keine Jalousie-/Vorhangentität konfiguriert ist oder die konfigurierte Abdeckung nicht verfügbar bzw. unbekannt ist."
+          },
+          "sections": {
+            "opening_model": {
+              "name": "Modell der Außenöffnung",
+              "description": "Optische Eigenschaften zur Modellierung des Tageslichteinfalls durch diese Verglasung.",
+              "data": {
+                "transmission": "Lichtdurchlässigkeit der Verglasung"
+              },
+              "data_description": {
+                "transmission": "Anteil des einfallenden Tageslichts, der durch die Verglasung übertragen wird, bevor eine Abdeckung es reduziert."
+              }
+            }
           }
         }
       },
@@ -205,18 +215,6 @@
             "room_b": "Raum B",
             "connection_type": "Verbindungstyp"
           },
-          "sections": {
-            "connection_model": {
-              "name": "Übertragungsmodell",
-              "description": "Bestimmt, wie effizient Tageslicht durch diese Öffnung gelangt.",
-              "data": {
-                "transfer_efficiency": "Übertragungseffizienz"
-              },
-              "data_description": {
-                "transfer_efficiency": "Skaliert die Tageslichtübertragung durch diese Öffnung, nachdem Fläche und Transmission im geöffneten Zustand berücksichtigt wurden."
-              }
-            }
-          },
           "data_description": {
             "connection_name": "Optionaler benutzerfreundlicher Name. Leer lassen, um automatisch die beiden Raumnamen zu verwenden.",
             "room_a": "Einer der Räume an dieser physischen Öffnung.",
@@ -226,24 +224,12 @@
         },
         "reconfigure": {
           "title": "Raumverbindung neu konfigurieren",
-          "description": "Räume, Öffnungstyp oder Übertragungsmodell aktualisieren.",
+          "description": "Räume und Öffnungstyp aktualisieren. Das Verbindungsverhalten wird im nächsten Schritt konfiguriert.",
           "data": {
             "connection_name": "Verbindungsname (optional)",
             "room_a": "Raum A",
             "room_b": "Raum B",
             "connection_type": "Verbindungstyp"
-          },
-          "sections": {
-            "connection_model": {
-              "name": "Übertragungsmodell",
-              "description": "Bestimmt, wie effizient Tageslicht durch diese Öffnung gelangt.",
-              "data": {
-                "transfer_efficiency": "Übertragungseffizienz"
-              },
-              "data_description": {
-                "transfer_efficiency": "Skaliert die Tageslichtübertragung durch diese Öffnung, nachdem Fläche und Transmission im geöffneten Zustand berücksichtigt wurden."
-              }
-            }
           },
           "data_description": {
             "connection_name": "Optionaler benutzerfreundlicher Name. Leer lassen, um automatisch die beiden Raumnamen zu verwenden.",
@@ -254,24 +240,36 @@
         },
         "connection_details": {
           "title": "Verbindungsdetails",
-          "description": "Eine Zustandsentität ist optional. Der angenommene Verbindungszustand wird verwendet, wenn kein nutzbarer Entitätszustand verfügbar ist.",
+          "description": "Abmessungen und optionale Zustandserfassung konfigurieren. Erweitertes Übertragungsverhalten befindet sich unter Verbindungsmodell.",
           "data": {
-            "width_m": "Öffnungsbreite (m)",
-            "height_m": "Öffnungshöhe (m)",
-            "length_m": "Öffnungslänge (m)",
+            "width_cm": "Öffnungsbreite (cm)",
+            "height_cm": "Öffnungshöhe (cm)",
+            "length_cm": "Öffnungslänge (cm)",
             "state_entity": "Zustandsentität für Tür / Öffnung",
-            "assumed_state": "Angenommener Verbindungszustand",
-            "invert_state": "Zustand umkehren",
-            "closed_transmission": "Transmission im geschlossenen Zustand"
+            "assumed_state": "Angenommener Verbindungszustand"
           },
           "data_description": {
-            "width_m": "Öffnungsbreite in Metern.",
-            "height_m": "Öffnungshöhe in Metern.",
-            "length_m": "Ungefähre Länge der Deckenöffnung in Metern für ein Treppenhaus.",
+            "width_cm": "Öffnungsbreite in Zentimetern.",
+            "height_cm": "Öffnungshöhe in Zentimetern.",
+            "length_cm": "Ungefähre Länge der Bodenöffnung in Zentimetern für ein Treppenhaus.",
             "state_entity": "Optionaler Binärsensor, Eingabe-Boolean oder Abdeckung, der bzw. die angibt, ob die Öffnung offen ist. Ein nutzbarer Entitätszustand überschreibt die konfigurierte Annahme.",
-            "assumed_state": "Zustand, der verwendet wird, wenn keine Tür-/Öffnungsentität konfiguriert ist oder die konfigurierte Entität nicht verfügbar bzw. unbekannt ist.",
-            "invert_state": "Kehrt die bekannte Offen/Geschlossen-Bedeutung der Entität um. Der konfigurierte angenommene Zustand wird nicht umgekehrt.",
-            "closed_transmission": "Anteil des Tageslichts, der bei geschlossener Verbindung hindurchtreten kann; nützlich für verglaste Innentüren."
+            "assumed_state": "Zustand, der verwendet wird, wenn keine Tür-/Öffnungsentität konfiguriert ist oder die konfigurierte Entität nicht verfügbar bzw. unbekannt ist."
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Verbindungsmodell",
+              "description": "Erweitertes Verhalten für die Tageslichtübertragung durch diese Öffnung.",
+              "data": {
+                "transfer_efficiency": "Übertragungseffizienz",
+                "closed_transmission": "Transmission im geschlossenen Zustand",
+                "invert_state": "Status umkehren"
+              },
+              "data_description": {
+                "transfer_efficiency": "Skaliert die Tageslichtübertragung durch diese Öffnung, nachdem Fläche und zustandsabhängige Transmission angewendet wurden.",
+                "closed_transmission": "Anteil des Tageslichts, der bei geschlossener Verbindung hindurchtreten kann; nützlich für verglaste Innentüren.",
+                "invert_state": "Kehrt die bekannte Offen-/Geschlossen-Bedeutung eines gültigen Entitätsstatus um. Der konfigurierte angenommene Status wird nicht umgekehrt."
+              }
+            }
           }
         }
       },

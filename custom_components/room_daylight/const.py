@@ -34,11 +34,17 @@ CONF_OPENING_TYPE = "type"
 CONF_WIDTH = "width_m"
 CONF_HEIGHT = "height_m"
 CONF_LENGTH = "length_m"
+# UI-only dimension keys. Config flows present centimetres while persisted data
+# remains in metres for the calculation/model layer.
+CONF_WIDTH_CM = "width_cm"
+CONF_HEIGHT_CM = "height_cm"
+CONF_LENGTH_CM = "length_cm"
 CONF_AZIMUTH = "azimuth_deg"
 CONF_TILT = "tilt_deg"
 CONF_ROOF_PITCH = "roof_pitch_deg"
 CONF_COVER_ENTITY = "cover_entity"
 CONF_TRANSMISSION = "transmission"
+CONF_OPENING_MODEL = "opening_model"
 CONF_ASSUMED_STATE = "assumed_state"
 
 OPENING_TYPE_WALL = "wall"

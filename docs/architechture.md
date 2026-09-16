@@ -112,6 +112,14 @@ and the orientation factor blends direct incidence with sky view using the confi
 
 This is intentionally a heuristic orientation model, not a physically complete sky luminance model.
 
+## Configuration-unit boundary
+
+Opening and connection dimensions are presented in **centimetres** in the Home Assistant config flow because that is a more convenient unit for measuring windows, doors and internal openings. The config flow converts those values at submission time and persists `width_m`, `height_m` and `length_m` in metres.
+
+This keeps user-facing input ergonomic while preserving one canonical SI representation throughout `models.py`, `calculation.py` and `network.py`. UI-only keys such as `width_cm` never reach the calculation layer.
+
+The exterior-opening azimuth creation default is 0° (north); existing configured values are always preserved during reconfiguration.
+
 ## 5. Native room daylight
 
 Each exterior opening contributes approximately:

@@ -195,11 +195,15 @@ Room Daylight supports three opening types.
 
 #### Wall window / glazed exterior door
 
-Configure the opening's name, width, height, outward-facing direction, transmission and optional blind/curtain entity. Wall glazing is modelled as a vertical surface.
+Configure the opening's name, width, height, outward-facing direction and optional blind/curtain entity. Wall glazing is modelled as a vertical surface. New openings start at **0° (north)**; change the direction to match the actual outward-facing surface.
+
+Dimensions are entered in **centimetres** in the Home Assistant configuration UI. Room Daylight converts and stores them internally in metres for the calculation model.
+
+Glazing transmission is available under the collapsed **Exterior opening model** section so the common physical measurements stay prominent while the optical tuning remains available when needed.
 
 #### Rooflight / skylight
 
-Configure the name, width, length, roof pitch, facing direction, transmission and optional blind entity.
+Configure the name, width, length, roof pitch, facing direction and optional blind entity. Dimensions are entered in centimetres. Glazing transmission is configured under **Exterior opening model**.
 
 A flat rooflight uses a roof pitch of **0°**. Its facing direction has no practical effect because the surface points directly upwards.
 
@@ -261,6 +265,8 @@ Supported connection types are:
 
 A connection belongs to the relationship between two rooms rather than either room individually, so each physical doorway only needs to be configured once. Multiple connections between the same two rooms are allowed.
 
+Room A and Room B use dropdown selectors, which keeps the connection dialog compact even when many rooms are configured. Connection width, height and stairwell length are entered in **centimetres**; the persisted calculation model continues to use metres internally.
+
 #### Door/opening state
 
 Every connection has an **Assumed connection state** and can optionally use a Home Assistant state entity:
@@ -286,9 +292,11 @@ When a configured state entity has a usable value, that live state overrides the
 
 If no state entity is configured, or the configured entity is missing, `unknown` or `unavailable`, Room Daylight falls back to that connection's **Assumed connection state**. Inversion applies only to a valid entity state; it does not invert the configured assumption.
 
-#### Closed transmission
+#### Connection model
 
-A closed connection does not have to block all daylight. **Closed transmission** controls how much light may still pass while the opening is closed.
+Less frequently changed connection behaviour is grouped under the collapsed **Connection model** section. It contains **Transfer efficiency**, **Transmission when closed** and **Invert state**.
+
+A closed connection does not have to block all daylight. **Transmission when closed** controls how much light may still pass while the opening is closed.
 
 Examples:
 

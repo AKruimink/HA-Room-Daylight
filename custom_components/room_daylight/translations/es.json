@@ -160,27 +160,37 @@
           "description": "Configura las dimensiones acristaladas y la orientación hacia el exterior. El azimut se mide en sentido horario desde el norte (0° norte, 90° este, 180° sur, 270° oeste).",
           "data": {
             "name": "Nombre de la abertura",
-            "width_m": "Anchura (m)",
-            "height_m": "Altura (m)",
-            "length_m": "Longitud (m)",
+            "width_cm": "Anchura (cm)",
+            "height_cm": "Altura (cm)",
+            "length_cm": "Longitud (cm)",
             "roof_pitch_deg": "Pendiente del tejado / inclinación de la abertura (°)",
             "azimuth_deg": "Dirección exterior / azimut (°)",
             "tilt_deg": "Inclinación respecto a la horizontal (°)",
             "cover_entity": "Persiana / cortina",
-            "assumed_state": "Estado supuesto de la persiana",
-            "transmission": "Transmisión del acristalamiento"
+            "assumed_state": "Estado supuesto de la persiana"
           },
           "data_description": {
             "name": "Un nombre descriptivo para identificar esta abertura acristalada en los diagnósticos.",
-            "width_m": "Anchura acristalada en metros.",
-            "height_m": "Altura acristalada en metros.",
-            "length_m": "Longitud acristalada en metros para una claraboya.",
+            "width_cm": "Anchura acristalada en centímetros.",
+            "height_cm": "Altura acristalada en centímetros.",
+            "length_cm": "Longitud acristalada en centímetros para una claraboya.",
             "roof_pitch_deg": "Inclinación respecto a la horizontal. 0° es plana y orientada al cielo; 90° es vertical.",
             "azimuth_deg": "Dirección de brújula hacia el exterior medida en sentido horario desde el norte.",
             "tilt_deg": "Inclinación personalizada del plano respecto a la horizontal. 0° mira al cielo; 90° es vertical.",
             "cover_entity": "Cubierta opcional que controla esta abertura. Si su estado no se puede usar, Room Daylight recurre al estado supuesto configurado para la persiana.",
-            "assumed_state": "Estado usado cuando no hay una entidad de persiana/cortina configurada o cuando la cubierta configurada no está disponible o tiene un estado desconocido.",
-            "transmission": "Fracción de la luz natural incidente transmitida por el acristalamiento antes de cualquier reducción por la cubierta."
+            "assumed_state": "Estado usado cuando no hay una entidad de persiana/cortina configurada o cuando la cubierta configurada no está disponible o tiene un estado desconocido."
+          },
+          "sections": {
+            "opening_model": {
+              "name": "Modelo de abertura exterior",
+              "description": "Propiedades ópticas utilizadas para modelar la luz natural que entra por este acristalamiento.",
+              "data": {
+                "transmission": "Transmisión del acristalamiento"
+              },
+              "data_description": {
+                "transmission": "Fracción de la luz natural incidente transmitida por el acristalamiento antes de cualquier reducción por la cubierta."
+              }
+            }
           }
         }
       },
@@ -205,18 +215,6 @@
             "room_b": "Habitación B",
             "connection_type": "Tipo de conexión"
           },
-          "sections": {
-            "connection_model": {
-              "name": "Modelo de transferencia",
-              "description": "Controla la eficiencia con la que la luz natural atraviesa esta abertura.",
-              "data": {
-                "transfer_efficiency": "Eficiencia de transferencia"
-              },
-              "data_description": {
-                "transfer_efficiency": "Escala la transferencia de luz natural a través de esta abertura después de aplicar el área y la transmisión en estado abierto."
-              }
-            }
-          },
           "data_description": {
             "connection_name": "Nombre descriptivo opcional. Déjalo vacío para usar automáticamente los nombres de las dos habitaciones.",
             "room_a": "Una de las habitaciones de esta abertura física.",
@@ -226,24 +224,12 @@
         },
         "reconfigure": {
           "title": "Reconfigurar conexión entre habitaciones",
-          "description": "Actualiza las habitaciones, el tipo de abertura o el modelo de transferencia.",
+          "description": "Actualiza las habitaciones y el tipo de abertura. El comportamiento de la conexión se configura en el siguiente paso.",
           "data": {
             "connection_name": "Nombre de la conexión (opcional)",
             "room_a": "Habitación A",
             "room_b": "Habitación B",
             "connection_type": "Tipo de conexión"
-          },
-          "sections": {
-            "connection_model": {
-              "name": "Modelo de transferencia",
-              "description": "Controla la eficiencia con la que la luz natural atraviesa esta abertura.",
-              "data": {
-                "transfer_efficiency": "Eficiencia de transferencia"
-              },
-              "data_description": {
-                "transfer_efficiency": "Escala la transferencia de luz natural a través de esta abertura después de aplicar el área y la transmisión en estado abierto."
-              }
-            }
           },
           "data_description": {
             "connection_name": "Nombre descriptivo opcional. Déjalo vacío para usar automáticamente los nombres de las dos habitaciones.",
@@ -254,24 +240,36 @@
         },
         "connection_details": {
           "title": "Detalles de la conexión",
-          "description": "La entidad de estado es opcional. Se usa el estado supuesto de la conexión cuando no hay disponible un estado de entidad utilizable.",
+          "description": "Configura las dimensiones y la detección de estado opcional. El comportamiento avanzado está en Modelo de conexión.",
           "data": {
-            "width_m": "Anchura de la abertura (m)",
-            "height_m": "Altura de la abertura (m)",
-            "length_m": "Longitud de la abertura (m)",
+            "width_cm": "Anchura de la abertura (cm)",
+            "height_cm": "Altura de la abertura (cm)",
+            "length_cm": "Longitud de la abertura (cm)",
             "state_entity": "Entidad de estado de puerta / abertura",
-            "assumed_state": "Estado supuesto de la conexión",
-            "invert_state": "Invertir estado",
-            "closed_transmission": "Transmisión cuando está cerrada"
+            "assumed_state": "Estado supuesto de la conexión"
           },
           "data_description": {
-            "width_m": "Anchura de la abertura en metros.",
-            "height_m": "Altura de la abertura en metros.",
-            "length_m": "Longitud aproximada de la abertura del forjado en metros para una escalera.",
+            "width_cm": "Anchura de la abertura en centímetros.",
+            "height_cm": "Altura de la abertura en centímetros.",
+            "length_cm": "Longitud aproximada de la abertura del suelo en centímetros para una escalera.",
             "state_entity": "Sensor binario, booleano de entrada o cubierta opcional que indica si la abertura está abierta. Un estado de entidad utilizable prevalece sobre la suposición configurada.",
-            "assumed_state": "Estado usado cuando no hay una entidad de puerta/abertura configurada o cuando la entidad configurada no está disponible o tiene un estado desconocido.",
-            "invert_state": "Invierte la semántica conocida de abierto/cerrado de la entidad. El estado supuesto configurado no se invierte.",
-            "closed_transmission": "Fracción de luz natural que puede pasar cuando la conexión está cerrada, útil para puertas interiores acristaladas."
+            "assumed_state": "Estado usado cuando no hay una entidad de puerta/abertura configurada o cuando la entidad configurada no está disponible o tiene un estado desconocido."
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Modelo de conexión",
+              "description": "Comportamiento avanzado para la transferencia de luz natural a través de esta abertura.",
+              "data": {
+                "transfer_efficiency": "Eficiencia de transferencia",
+                "closed_transmission": "Transmisión cuando está cerrada",
+                "invert_state": "Invertir estado"
+              },
+              "data_description": {
+                "transfer_efficiency": "Escala la transferencia de luz natural a través de esta abertura después de aplicar el área y la transmisión según el estado de apertura.",
+                "closed_transmission": "Fracción de luz natural que puede pasar cuando la conexión está cerrada, útil para puertas interiores acristaladas.",
+                "invert_state": "Invierte la semántica abierto/cerrado de un estado de entidad válido. El estado supuesto configurado no se invierte."
+              }
+            }
           }
         }
       },

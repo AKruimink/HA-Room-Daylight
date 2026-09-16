@@ -160,27 +160,37 @@
           "description": "Configureer de beglaasde afmetingen en de naar buiten gerichte oriëntatie. Azimut wordt met de klok mee vanaf het noorden gemeten (0° noord, 90° oost, 180° zuid, 270° west).",
           "data": {
             "name": "Naam van opening",
-            "width_m": "Breedte (m)",
-            "height_m": "Hoogte (m)",
-            "length_m": "Lengte (m)",
+            "width_cm": "Breedte (cm)",
+            "height_cm": "Hoogte (cm)",
+            "length_cm": "Lengte (cm)",
             "roof_pitch_deg": "Dakhelling / helling van opening (°)",
             "azimuth_deg": "Naar buiten gerichte richting / azimut (°)",
             "tilt_deg": "Helling ten opzichte van horizontaal (°)",
             "cover_entity": "Jaloezie / gordijn",
-            "assumed_state": "Aangenomen jaloeziestatus",
-            "transmission": "Lichttransmissie van beglazing"
+            "assumed_state": "Aangenomen jaloeziestatus"
           },
           "data_description": {
             "name": "Een gebruiksvriendelijke diagnostische naam voor deze beglaasde opening.",
-            "width_m": "Beglaasde breedte in meter.",
-            "height_m": "Beglaasde hoogte in meter.",
-            "length_m": "Beglaasde lengte in meter voor een daklicht.",
+            "width_cm": "Beglaasde breedte in centimeter.",
+            "height_cm": "Beglaasde hoogte in centimeter.",
+            "length_cm": "Beglaasde lengte in centimeter voor een daklicht.",
             "roof_pitch_deg": "Helling ten opzichte van horizontaal. 0° is vlak en naar de hemel gericht; 90° is verticaal.",
             "azimuth_deg": "Naar buiten gerichte kompasrichting, met de klok mee gemeten vanaf het noorden.",
             "tilt_deg": "Aangepaste vlakhelling ten opzichte van horizontaal. 0° wijst naar de hemel; 90° is verticaal.",
             "cover_entity": "Optionele afdekking die deze opening regelt. Wanneer de status niet bruikbaar is, valt Room Daylight terug op de geconfigureerde aangenomen jaloeziestatus.",
-            "assumed_state": "Status die wordt gebruikt wanneer geen jaloezie-/gordijnentiteit is geconfigureerd of wanneer de geconfigureerde afdekking niet beschikbaar of onbekend is.",
-            "transmission": "Aandeel invallend daglicht dat door de beglazing wordt doorgelaten voordat een afdekking het vermindert."
+            "assumed_state": "Status die wordt gebruikt wanneer geen jaloezie-/gordijnentiteit is geconfigureerd of wanneer de geconfigureerde afdekking niet beschikbaar of onbekend is."
+          },
+          "sections": {
+            "opening_model": {
+              "name": "Model voor buitenopening",
+              "description": "Optische eigenschappen waarmee daglicht door deze beglazing wordt gemodelleerd.",
+              "data": {
+                "transmission": "Lichttransmissie van beglazing"
+              },
+              "data_description": {
+                "transmission": "Aandeel invallend daglicht dat door de beglazing wordt doorgelaten voordat een afdekking het vermindert."
+              }
+            }
           }
         }
       },
@@ -205,18 +215,6 @@
             "room_b": "Kamer B",
             "connection_type": "Type verbinding"
           },
-          "sections": {
-            "connection_model": {
-              "name": "Overdrachtsmodel",
-              "description": "Bepaalt hoe efficiënt daglicht door deze opening gaat.",
-              "data": {
-                "transfer_efficiency": "Overdrachtsefficiëntie"
-              },
-              "data_description": {
-                "transfer_efficiency": "Schaalt de daglichtoverdracht door deze opening nadat oppervlak en transmissie in geopende toestand zijn toegepast."
-              }
-            }
-          },
           "data_description": {
             "connection_name": "Optionele gebruiksvriendelijke naam. Laat leeg om automatisch de namen van beide kamers te gebruiken.",
             "room_a": "Eén kamer aan deze fysieke opening.",
@@ -226,24 +224,12 @@
         },
         "reconfigure": {
           "title": "Kamerverbinding opnieuw configureren",
-          "description": "Werk de kamers, het type opening of het overdrachtsmodel bij.",
+          "description": "Werk de kamers en het type opening bij. Het gedrag van de verbinding wordt in de volgende stap ingesteld.",
           "data": {
             "connection_name": "Naam van verbinding (optioneel)",
             "room_a": "Kamer A",
             "room_b": "Kamer B",
             "connection_type": "Type verbinding"
-          },
-          "sections": {
-            "connection_model": {
-              "name": "Overdrachtsmodel",
-              "description": "Bepaalt hoe efficiënt daglicht door deze opening gaat.",
-              "data": {
-                "transfer_efficiency": "Overdrachtsefficiëntie"
-              },
-              "data_description": {
-                "transfer_efficiency": "Schaalt de daglichtoverdracht door deze opening nadat oppervlak en transmissie in geopende toestand zijn toegepast."
-              }
-            }
           },
           "data_description": {
             "connection_name": "Optionele gebruiksvriendelijke naam. Laat leeg om automatisch de namen van beide kamers te gebruiken.",
@@ -254,24 +240,36 @@
         },
         "connection_details": {
           "title": "Details van verbinding",
-          "description": "Een statusentiteit is optioneel. De aangenomen verbindingsstatus wordt gebruikt wanneer geen bruikbare entiteitsstatus beschikbaar is.",
+          "description": "Configureer de afmetingen en optionele statusdetectie. Geavanceerde daglichtoverdracht staat onder Verbindingsmodel.",
           "data": {
-            "width_m": "Breedte van opening (m)",
-            "height_m": "Hoogte van opening (m)",
-            "length_m": "Lengte van opening (m)",
+            "width_cm": "Breedte van opening (cm)",
+            "height_cm": "Hoogte van opening (cm)",
+            "length_cm": "Lengte van opening (cm)",
             "state_entity": "Statusentiteit deur / opening",
-            "assumed_state": "Aangenomen verbindingsstatus",
-            "invert_state": "Status omkeren",
-            "closed_transmission": "Transmissie wanneer gesloten"
+            "assumed_state": "Aangenomen verbindingsstatus"
           },
           "data_description": {
-            "width_m": "Breedte van de opening in meter.",
-            "height_m": "Hoogte van de opening in meter.",
-            "length_m": "Geschatte lengte van de vloeropening in meter voor een trappenhuis.",
+            "width_cm": "Breedte van de opening in centimeter.",
+            "height_cm": "Hoogte van de opening in centimeter.",
+            "length_cm": "Geschatte lengte van de vloeropening in centimeter voor een trappenhuis.",
             "state_entity": "Optionele binaire sensor, input boolean of afdekking die aangeeft of de opening open is. Een bruikbare entiteitsstatus overschrijft de geconfigureerde aanname.",
-            "assumed_state": "Status die wordt gebruikt wanneer geen deur-/openingsentiteit is geconfigureerd of wanneer de geconfigureerde entiteit niet beschikbaar of onbekend is.",
-            "invert_state": "Keert de bekende open/gesloten-betekenis van de entiteit om. De geconfigureerde aangenomen status wordt niet omgekeerd.",
-            "closed_transmission": "Aandeel daglicht dat kan passeren terwijl de verbinding gesloten is, nuttig voor beglaasde binnendeuren."
+            "assumed_state": "Status die wordt gebruikt wanneer geen deur-/openingsentiteit is geconfigureerd of wanneer de geconfigureerde entiteit niet beschikbaar of onbekend is."
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Verbindingsmodel",
+              "description": "Geavanceerd gedrag voor daglichtoverdracht door deze opening.",
+              "data": {
+                "transfer_efficiency": "Overdrachtsefficiëntie",
+                "closed_transmission": "Transmissie wanneer gesloten",
+                "invert_state": "Status omkeren"
+              },
+              "data_description": {
+                "transfer_efficiency": "Schaalt de daglichtoverdracht door deze opening nadat oppervlakte en transmissie op basis van de openstand zijn toegepast.",
+                "closed_transmission": "Aandeel daglicht dat kan passeren terwijl de verbinding gesloten is, nuttig voor beglaasde binnendeuren.",
+                "invert_state": "Keer de bekende open/gesloten-betekenis van de entiteit om. De ingestelde aangenomen status wordt niet omgekeerd."
+              }
+            }
           }
         }
       },

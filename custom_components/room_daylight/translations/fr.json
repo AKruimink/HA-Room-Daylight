@@ -160,27 +160,37 @@
           "description": "Configurez les dimensions vitrées et l’orientation vers l’extérieur. L’azimut se mesure dans le sens horaire à partir du nord (0° nord, 90° est, 180° sud, 270° ouest).",
           "data": {
             "name": "Nom de l’ouverture",
-            "width_m": "Largeur (m)",
-            "height_m": "Hauteur (m)",
-            "length_m": "Longueur (m)",
+            "width_cm": "Largeur (cm)",
+            "height_cm": "Hauteur (cm)",
+            "length_cm": "Longueur (cm)",
             "roof_pitch_deg": "Pente du toit / inclinaison de l’ouverture (°)",
             "azimuth_deg": "Direction extérieure / azimut (°)",
             "tilt_deg": "Inclinaison par rapport à l’horizontale (°)",
             "cover_entity": "Store / rideau",
-            "assumed_state": "État supposé du store",
-            "transmission": "Transmission du vitrage"
+            "assumed_state": "État supposé du store"
           },
           "data_description": {
             "name": "Un nom convivial utilisé dans les diagnostics pour cette ouverture vitrée.",
-            "width_m": "Largeur vitrée en mètres.",
-            "height_m": "Hauteur vitrée en mètres.",
-            "length_m": "Longueur vitrée en mètres pour une fenêtre de toit.",
+            "width_cm": "Largeur vitrée en centimètres.",
+            "height_cm": "Hauteur vitrée en centimètres.",
+            "length_cm": "Longueur vitrée en centimètres pour une fenêtre de toit.",
             "roof_pitch_deg": "Inclinaison par rapport à l’horizontale. 0° correspond à une surface plane orientée vers le ciel ; 90° à une surface verticale.",
             "azimuth_deg": "Direction extérieure mesurée dans le sens horaire à partir du nord.",
             "tilt_deg": "Inclinaison personnalisée du plan par rapport à l’horizontale. 0° fait face au ciel ; 90° est vertical.",
             "cover_entity": "Protection facultative contrôlant cette ouverture. Si son état ne peut pas être utilisé, Room Daylight applique l’état supposé configuré du store.",
-            "assumed_state": "État utilisé lorsqu’aucune entité de store/rideau n’est configurée, ou lorsque la protection configurée est indisponible ou inconnue.",
-            "transmission": "Fraction de la lumière naturelle incidente transmise par le vitrage avant toute réduction due à une protection."
+            "assumed_state": "État utilisé lorsqu’aucune entité de store/rideau n’est configurée, ou lorsque la protection configurée est indisponible ou inconnue."
+          },
+          "sections": {
+            "opening_model": {
+              "name": "Modèle de l’ouverture extérieure",
+              "description": "Propriétés optiques utilisées pour modéliser la lumière naturelle traversant ce vitrage.",
+              "data": {
+                "transmission": "Transmission du vitrage"
+              },
+              "data_description": {
+                "transmission": "Fraction de la lumière naturelle incidente transmise par le vitrage avant toute réduction due à une protection."
+              }
+            }
           }
         }
       },
@@ -205,18 +215,6 @@
             "room_b": "Pièce B",
             "connection_type": "Type de connexion"
           },
-          "sections": {
-            "connection_model": {
-              "name": "Modèle de transfert",
-              "description": "Détermine l’efficacité avec laquelle la lumière naturelle traverse cette ouverture.",
-              "data": {
-                "transfer_efficiency": "Efficacité du transfert"
-              },
-              "data_description": {
-                "transfer_efficiency": "Met à l’échelle le transfert de lumière naturelle à travers cette ouverture après application de la surface et de la transmission selon l’état d’ouverture."
-              }
-            }
-          },
           "data_description": {
             "connection_name": "Nom convivial facultatif. Laissez vide pour utiliser automatiquement les noms des deux pièces.",
             "room_a": "Une des pièces reliées par cette ouverture physique.",
@@ -226,24 +224,12 @@
         },
         "reconfigure": {
           "title": "Reconfigurer la connexion entre pièces",
-          "description": "Mettre à jour les pièces, le type d’ouverture ou le modèle de transfert.",
+          "description": "Mettez à jour les pièces et le type d’ouverture. Le comportement de la connexion est configuré à l’étape suivante.",
           "data": {
             "connection_name": "Nom de la connexion (facultatif)",
             "room_a": "Pièce A",
             "room_b": "Pièce B",
             "connection_type": "Type de connexion"
-          },
-          "sections": {
-            "connection_model": {
-              "name": "Modèle de transfert",
-              "description": "Détermine l’efficacité avec laquelle la lumière naturelle traverse cette ouverture.",
-              "data": {
-                "transfer_efficiency": "Efficacité du transfert"
-              },
-              "data_description": {
-                "transfer_efficiency": "Met à l’échelle le transfert de lumière naturelle à travers cette ouverture après application de la surface et de la transmission selon l’état d’ouverture."
-              }
-            }
           },
           "data_description": {
             "connection_name": "Nom convivial facultatif. Laissez vide pour utiliser automatiquement les noms des deux pièces.",
@@ -254,24 +240,36 @@
         },
         "connection_details": {
           "title": "Détails de la connexion",
-          "description": "Une entité d’état est facultative. L’état supposé de la connexion est utilisé lorsqu’aucun état d’entité exploitable n’est disponible.",
+          "description": "Configurez les dimensions et la détection d’état facultative. Le comportement avancé se trouve sous Modèle de connexion.",
           "data": {
-            "width_m": "Largeur de l’ouverture (m)",
-            "height_m": "Hauteur de l’ouverture (m)",
-            "length_m": "Longueur de l’ouverture (m)",
+            "width_cm": "Largeur de l’ouverture (cm)",
+            "height_cm": "Hauteur de l’ouverture (cm)",
+            "length_cm": "Longueur de l’ouverture (cm)",
             "state_entity": "Entité d’état de la porte / ouverture",
-            "assumed_state": "État supposé de la connexion",
-            "invert_state": "Inverser l’état",
-            "closed_transmission": "Transmission à l’état fermé"
+            "assumed_state": "État supposé de la connexion"
           },
           "data_description": {
-            "width_m": "Largeur de l’ouverture en mètres.",
-            "height_m": "Hauteur de l’ouverture en mètres.",
-            "length_m": "Longueur approximative de l’ouverture au sol, en mètres, pour une cage d’escalier.",
+            "width_cm": "Largeur de l’ouverture en centimètres.",
+            "height_cm": "Hauteur de l’ouverture en centimètres.",
+            "length_cm": "Longueur approximative de l’ouverture au sol en centimètres pour un escalier.",
             "state_entity": "Capteur binaire, booléen d’entrée ou protection facultatif indiquant si l’ouverture est ouverte. Un état d’entité exploitable remplace l’hypothèse configurée.",
-            "assumed_state": "État utilisé lorsqu’aucune entité de porte/ouverture n’est configurée, ou lorsque l’entité configurée est indisponible ou inconnue.",
-            "invert_state": "Inverse la signification connue ouvert/fermé de l’entité. L’état supposé configuré n’est pas inversé.",
-            "closed_transmission": "Fraction de lumière naturelle pouvant traverser lorsque la connexion est fermée, utile pour les portes intérieures vitrées."
+            "assumed_state": "État utilisé lorsqu’aucune entité de porte/ouverture n’est configurée, ou lorsque l’entité configurée est indisponible ou inconnue."
+          },
+          "sections": {
+            "connection_model": {
+              "name": "Modèle de connexion",
+              "description": "Comportement avancé du transfert de lumière naturelle à travers cette ouverture.",
+              "data": {
+                "transfer_efficiency": "Efficacité du transfert",
+                "closed_transmission": "Transmission à l’état fermé",
+                "invert_state": "Inverser l’état"
+              },
+              "data_description": {
+                "transfer_efficiency": "Met à l’échelle le transfert de lumière naturelle à travers cette ouverture après application de la surface et de la transmission selon l’état d’ouverture.",
+                "closed_transmission": "Fraction de lumière naturelle pouvant traverser lorsque la connexion est fermée, utile pour les portes intérieures vitrées.",
+                "invert_state": "Inverse la signification ouverte/fermée d’un état d’entité valide. L’état supposé configuré n’est pas inversé."
+              }
+            }
           }
         }
       },

@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
+from homeassistant.const import UnitOfLength
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import SectionConfig, section
 from homeassistant.helpers import selector
@@ -37,13 +38,16 @@ from .const import (
     CONF_FLOOR_AREA,
     CONF_GLAZING_TRANSMISSION,
     CONF_HEIGHT,
+    CONF_HEIGHT_CM,
     CONF_INDOOR_LUX_SENSORS,
     CONF_INVERT_STATE,
     CONF_LENGTH,
+    CONF_LENGTH_CM,
     CONF_MODEL_DEFAULTS,
     CONF_OPENING_COUNT,
     CONF_OPENING_ID,
     CONF_OPENING_NAME,
+    CONF_OPENING_MODEL,
     CONF_OPENING_TYPE,
     CONF_OPENINGS,
     CONF_OUTDOOR_ILLUMINANCE_ENTITY,
@@ -59,6 +63,7 @@ from .const import (
     CONF_TRANSFER_EFFICIENCY,
     CONF_TRANSMISSION,
     CONF_WIDTH,
+    CONF_WIDTH_CM,
     CONNECTION_TYPES,
     CONNECTION_TYPE_STAIRWELL,
     DEFAULT_DAYLIGHT_UTILISATION,
@@ -106,6 +111,33 @@ def _ratio_selector() -> selector.NumberSelector:
     """Return a 0..1 ratio selector."""
 
     return _number_selector(0.0, 1.0, step=0.01)
+
+
+def _dimension_cm_selector() -> selector.NumberSelector:
+    """Return a centimetre selector for opening dimensions."""
+
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=MIN_OPENING_DIMENSION_M * 100.0,
+            max=MAX_OPENING_DIMENSION_M * 100.0,
+            step=1.0,
+            mode=selector.NumberSelectorMode.BOX,
+            unit_of_measurement=UnitOfLength.CENTIMETERS,
+        )
+    )
+
+
+def _metres_to_centimetres(value: Any, default_metres: float) -> float:
+    """Convert a persisted metre value to centimetres for the config UI."""
+
+    metres = default_metres if value is None else float(value)
+    return round(metres * 100.0, 3)
+
+
+def _centimetres_to_metres(value: Any) -> float:
+    """Convert a config-flow centimetre value to persisted metres."""
+
+    return float(value) / 100.0
 
 
 def _entity_selector(
@@ -501,25 +533,24 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 ),
             ): selector.TextSelector(),
             vol.Required(
-                CONF_WIDTH,
-                default=existing.get(CONF_WIDTH, 1.0),
-            ): _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            ),
+                CONF_WIDTH_CM,
+                default=_metres_to_centimetres(
+                    existing.get(CONF_WIDTH),
+                    1.0,
+                ),
+            ): _dimension_cm_selector(),
         }
 
         if self._opening_type == OPENING_TYPE_ROOFLIGHT:
             fields[
                 vol.Required(
-                    CONF_LENGTH,
-                    default=existing.get(
-                        CONF_LENGTH,
-                        existing.get(CONF_HEIGHT, 1.0),
+                    CONF_LENGTH_CM,
+                    default=_metres_to_centimetres(
+                        existing.get(CONF_LENGTH, existing.get(CONF_HEIGHT)),
+                        1.0,
                     ),
                 )
-            ] = _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            )
+            ] = _dimension_cm_selector()
             fields[
                 vol.Required(
                     CONF_ROOF_PITCH,
@@ -532,15 +563,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         else:
             fields[
                 vol.Required(
-                    CONF_HEIGHT,
-                    default=existing.get(
-                        CONF_HEIGHT,
-                        existing.get(CONF_LENGTH, 1.0),
+                    CONF_HEIGHT_CM,
+                    default=_metres_to_centimetres(
+                        existing.get(CONF_HEIGHT, existing.get(CONF_LENGTH)),
+                        1.0,
                     ),
                 )
-            ] = _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            )
+            ] = _dimension_cm_selector()
             if self._opening_type != OPENING_TYPE_WALL:
                 fields[
                     vol.Required(
@@ -552,7 +581,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         fields[
             vol.Required(
                 CONF_AZIMUTH,
-                default=existing.get(CONF_AZIMUTH, 180.0),
+                default=existing.get(CONF_AZIMUTH, 0.0),
             )
         ] = _number_selector(0.0, 359.9, step=0.1)
         fields[
@@ -570,15 +599,20 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 ),
             )
         ] = _static_select(ASSUMED_STATES, "assumed_state")
-        fields[
-            vol.Required(
-                CONF_TRANSMISSION,
-                default=existing.get(
-                    CONF_TRANSMISSION,
-                    defaults[CONF_GLAZING_TRANSMISSION],
-                ),
-            )
-        ] = _ratio_selector()
+        fields[vol.Required(CONF_OPENING_MODEL)] = section(
+            vol.Schema(
+                {
+                    vol.Required(
+                        CONF_TRANSMISSION,
+                        default=existing.get(
+                            CONF_TRANSMISSION,
+                            defaults[CONF_GLAZING_TRANSMISSION],
+                        ),
+                    ): _ratio_selector(),
+                }
+            ),
+            SectionConfig(collapsed=True),
+        )
         return vol.Schema(fields)
 
     def _normalise_opening(
@@ -586,15 +620,23 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         user_input: dict[str, Any],
         existing: dict[str, Any],
     ) -> dict[str, Any]:
-        """Convert type-specific form data to the common opening model."""
+        """Convert UI-specific form data to the persisted opening model."""
 
         data = dict(user_input)
+        opening_model = dict(data.pop(CONF_OPENING_MODEL))
         data[CONF_OPENING_ID] = existing.get(CONF_OPENING_ID, uuid4().hex)
         data[CONF_OPENING_TYPE] = self._opening_type
-        if self._opening_type == OPENING_TYPE_WALL:
-            data[CONF_TILT] = 90.0
-        elif self._opening_type == OPENING_TYPE_ROOFLIGHT:
+        data[CONF_WIDTH] = _centimetres_to_metres(data.pop(CONF_WIDTH_CM))
+        data[CONF_TRANSMISSION] = float(opening_model[CONF_TRANSMISSION])
+
+        if self._opening_type == OPENING_TYPE_ROOFLIGHT:
+            data[CONF_LENGTH] = _centimetres_to_metres(data.pop(CONF_LENGTH_CM))
             data[CONF_TILT] = float(data[CONF_ROOF_PITCH])
+        else:
+            data[CONF_HEIGHT] = _centimetres_to_metres(data.pop(CONF_HEIGHT_CM))
+            if self._opening_type == OPENING_TYPE_WALL:
+                data[CONF_TILT] = 90.0
+
         return data
 
     def _finish_room(self) -> SubentryFlowResult:
@@ -655,7 +697,7 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
         return room.title if room is not None else room_id
 
     def _connection_schema(self) -> vol.Schema:
-        """Build the common connection schema."""
+        """Build the room and connection-type selection schema."""
 
         options = self._room_options()
         first = options[0]["value"] if options else ""
@@ -671,9 +713,11 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
             room_b = next(
                 option["value"] for option in options if option["value"] != room_a
             )
-        defaults = _model_defaults(dict(self._get_entry().data))
-        connection_model = self._existing.get(CONF_CONNECTION_MODEL, {})
 
+        room_selector_config = selector.SelectSelectorConfig(
+            options=options,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
         return vol.Schema(
             {
                 vol.Optional(
@@ -683,35 +727,17 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
                 vol.Required(
                     CONF_ROOM_A,
                     default=room_a,
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(options=options)
-                ),
+                ): selector.SelectSelector(room_selector_config),
                 vol.Required(
                     CONF_ROOM_B,
                     default=room_b,
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(options=options)
-                ),
+                ): selector.SelectSelector(room_selector_config),
                 vol.Required(
                     CONF_CONNECTION_TYPE,
                     default=self._existing.get(
                         CONF_CONNECTION_TYPE, CONNECTION_TYPES[0]
                     ),
                 ): _static_select(CONNECTION_TYPES, "connection_type"),
-                vol.Required(CONF_CONNECTION_MODEL): section(
-                    vol.Schema(
-                        {
-                            vol.Required(
-                                CONF_TRANSFER_EFFICIENCY,
-                                default=connection_model.get(
-                                    CONF_TRANSFER_EFFICIENCY,
-                                    defaults[CONF_TRANSFER_EFFICIENCY],
-                                ),
-                            ): _ratio_selector(),
-                        }
-                    ),
-                    SectionConfig(collapsed=True),
-                ),
             }
         )
 
@@ -759,11 +785,12 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
     async def async_step_connection_details(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Configure opening dimensions and optional state sensing."""
+        """Configure connection dimensions, state sensing and model tuning."""
 
         connection_type = str(self._connection_data[CONF_CONNECTION_TYPE])
         if user_input is not None:
-            data = {**self._connection_data, **user_input}
+            details = self._normalise_connection_details(user_input, connection_type)
+            data = {**self._connection_data, **details}
             name = str(data.get(CONF_CONNECTION_NAME, "")).strip()
             if not name:
                 name = (
@@ -780,38 +807,43 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
                 data=data,
             )
 
+        defaults = _model_defaults(dict(self._get_entry().data))
+        connection_model = self._existing.get(CONF_CONNECTION_MODEL, {})
         fields: dict[Any, Any] = {
             vol.Required(
-                CONF_WIDTH,
-                default=self._existing.get(CONF_WIDTH, 0.85),
-            ): _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            ),
+                CONF_WIDTH_CM,
+                default=_metres_to_centimetres(
+                    self._existing.get(CONF_WIDTH),
+                    0.85,
+                ),
+            ): _dimension_cm_selector(),
         }
         if connection_type == CONNECTION_TYPE_STAIRWELL:
             fields[
                 vol.Required(
-                    CONF_LENGTH,
-                    default=self._existing.get(
-                        CONF_LENGTH,
-                        self._existing.get(CONF_HEIGHT, 2.0),
+                    CONF_LENGTH_CM,
+                    default=_metres_to_centimetres(
+                        self._existing.get(
+                            CONF_LENGTH,
+                            self._existing.get(CONF_HEIGHT),
+                        ),
+                        2.0,
                     ),
                 )
-            ] = _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            )
+            ] = _dimension_cm_selector()
         else:
             fields[
                 vol.Required(
-                    CONF_HEIGHT,
-                    default=self._existing.get(
-                        CONF_HEIGHT,
-                        self._existing.get(CONF_LENGTH, 2.0),
+                    CONF_HEIGHT_CM,
+                    default=_metres_to_centimetres(
+                        self._existing.get(
+                            CONF_HEIGHT,
+                            self._existing.get(CONF_LENGTH),
+                        ),
+                        2.0,
                     ),
                 )
-            ] = _number_selector(
-                MIN_OPENING_DIMENSION_M, MAX_OPENING_DIMENSION_M, step=0.01
-            )
+            ] = _dimension_cm_selector()
 
         fields[
             vol.Optional(
@@ -828,20 +860,60 @@ class ConnectionSubentryFlow(ConfigSubentryFlow):
                 ),
             )
         ] = _static_select(ASSUMED_STATES, "assumed_state")
-        fields[
-            vol.Required(
-                CONF_INVERT_STATE,
-                default=self._existing.get(CONF_INVERT_STATE, False),
-            )
-        ] = selector.BooleanSelector()
-        fields[
-            vol.Required(
-                CONF_CLOSED_TRANSMISSION,
-                default=self._existing.get(CONF_CLOSED_TRANSMISSION, 0.0),
-            )
-        ] = _ratio_selector()
+        fields[vol.Required(CONF_CONNECTION_MODEL)] = section(
+            vol.Schema(
+                {
+                    vol.Required(
+                        CONF_TRANSFER_EFFICIENCY,
+                        default=connection_model.get(
+                            CONF_TRANSFER_EFFICIENCY,
+                            defaults[CONF_TRANSFER_EFFICIENCY],
+                        ),
+                    ): _ratio_selector(),
+                    vol.Required(
+                        CONF_CLOSED_TRANSMISSION,
+                        default=self._existing.get(
+                            CONF_CLOSED_TRANSMISSION,
+                            0.0,
+                        ),
+                    ): _ratio_selector(),
+                    vol.Required(
+                        CONF_INVERT_STATE,
+                        default=self._existing.get(CONF_INVERT_STATE, False),
+                    ): selector.BooleanSelector(),
+                }
+            ),
+            SectionConfig(collapsed=True),
+        )
 
         return self.async_show_form(
             step_id="connection_details",
             data_schema=vol.Schema(fields),
         )
+
+    def _normalise_connection_details(
+        self,
+        user_input: dict[str, Any],
+        connection_type: str,
+    ) -> dict[str, Any]:
+        """Convert UI-specific connection fields to persisted model data."""
+
+        data = dict(user_input)
+        connection_model = dict(data.pop(CONF_CONNECTION_MODEL))
+        data[CONF_WIDTH] = _centimetres_to_metres(data.pop(CONF_WIDTH_CM))
+        if connection_type == CONNECTION_TYPE_STAIRWELL:
+            data[CONF_LENGTH] = _centimetres_to_metres(data.pop(CONF_LENGTH_CM))
+        else:
+            data[CONF_HEIGHT] = _centimetres_to_metres(data.pop(CONF_HEIGHT_CM))
+
+        data[CONF_INVERT_STATE] = bool(connection_model[CONF_INVERT_STATE])
+        data[CONF_CLOSED_TRANSMISSION] = float(
+            connection_model[CONF_CLOSED_TRANSMISSION]
+        )
+        data[CONF_CONNECTION_MODEL] = {
+            CONF_TRANSFER_EFFICIENCY: float(
+                connection_model[CONF_TRANSFER_EFFICIENCY]
+            )
+        }
+        return data
+
